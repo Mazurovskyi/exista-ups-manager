@@ -1,0 +1,31 @@
+{
+    "gateway/event/battery": {
+        "serialNumber": null,
+        "eventTime": null,
+        "batteryEvent": null,
+        "batteryMissingCounter": 0,
+        "acBatterySwitchCounter": 0
+    },
+
+
+    "gateway/batteryInfo.rep": {
+        "serialNumber": null,
+        "batteryInfo": {
+            "comStatus": null,
+            "dcStatus": null,
+            "batteryStatus": null,
+            "batteryVoltage": null,
+            "batteryCurrent": null,
+            "soc": null,
+            "soh": null,
+            "timeLeft": null
+        }
+    },
+
+
+    "gateway/upsInfo": {
+        "moduleName": null,
+        "firmwareVersion": null,
+        "upsSerialNumber": "NA"
+    }
+}

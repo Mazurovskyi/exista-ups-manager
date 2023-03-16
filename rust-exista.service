@@ -1,0 +1,26 @@
+[Unit]
+Description=rust-exista demo service
+Conflicts=exista-ups-manager.service
+# Documentation= url to exista documentation
+
+
+[Service]
+ExecStart=/home/schindler/rust_exista/exista_ups_manager
+User=root
+
+# restart service regardless of the reasons for termination
+Restart=always  
+
+# restart interval - 5 sec
+RestartSec=10
+
+# no time limit trying to restart service
+#StartLimitIntervalSec=0
+
+
+#PermissionsStartOnly=true
+
+# ExecStartPre=chown -R exista-ups-manager:exista-ups-manager /var/lib/exista-ups-manager
+
+[Install]
+WantedBy=default.target
