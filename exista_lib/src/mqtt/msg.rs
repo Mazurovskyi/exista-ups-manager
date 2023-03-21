@@ -71,19 +71,6 @@ impl GetPayload for Message {
     fn get_payload(self, param: &str)->Result<String, Box<dyn Error>>{
 
         let mut json_obj = json::parse(&self.payload_str())?;
-        /*
-        let mut json_obj = match self.payload_str(){
-            Cow::Borrowed(payload) => json::parse(payload)?,
-            Cow::Owned(payload) => {
-                println!("The contents of the payload are not valid UTF-8 data!");
-                json::parse(&payload)?
-            }
-        };
-         */
-        
-
-        //println!("\nWe have recieved a JSON_OBJ:");
-        //println!("{}\n", json_obj.pretty(4));
     
         let json_value = json_obj.remove(param);
 

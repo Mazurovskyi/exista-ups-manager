@@ -2,6 +2,7 @@ extern crate serial;
 use std::borrow::{BorrowMut, Borrow};
 use std::error::Error;
 use std::io::{Write, Read};
+use std::ops::{Deref, DerefMut};
 
 use serial:: {SystemPort, prelude::SerialPort};
 use std::time::Duration;
@@ -17,33 +18,66 @@ use chrono::Local;
 use crate::application::constants::*;
 
 use std::sync::mpsc::Sender;
+use std::sync::PoisonError;
+use std::io;
+
+
+
+pub struct ModbusPort(Arc<Mutex<SystemPort>>);
+
+impl ModbusPort{
+    fn open(port: &str)->Result<Self, io::Error>{
+        let port = serial::open(port)?;
+        Ok(ModbusPort(Arc::new(Mutex::new(port))))   
+    }
+    fn config(self)->Result<Self, io::Error>{
+    
+        self.lock().unwrap()
+            .reconfigure(&|port_config|{
+
+                port_config.set_baud_rate(serial::Baud115200)?;
+                port_config.set_char_size(serial::Bits8);
+                port_config.set_parity(serial::ParityNone);
+                port_config.set_stop_bits(serial::Stop1);
+                port_config.set_flow_control(serial::FlowNone);
+    
+                Ok(())
+            }
+        )?;
+    
+        Ok(self)
+    }
+    fn timeout(self, timeout: u64)->Result<Self, serial::Error>{
+        self.lock().unwrap().set_timeout(Duration::from_millis(timeout))?;
+        Ok(self)
+    }
+    fn clone(&self)->Self{
+        ModbusPort(Arc::clone(&self.0))
+    }
+}
+
+impl Deref for ModbusPort{
+
+    type Target = Arc<Mutex<SystemPort>>;
+
+    fn deref(&self) -> &Self::Target {
+        self.0.borrow()
+    }
+}
+
+
+
 pub struct Modbus{
-    port: Arc<Mutex<SystemPort>>,
-    status: Arc<RwLock<u8>>
+    port: ModbusPort,
+    status: ComStatus
 }
 impl Modbus{
     /// creates and configure the Modbus port.
     pub fn config(port: &str, timeout: u64)->Result<Self, Box<dyn Error>>{
 
-        let mut port = serial::open(port)?;
-    
-        //serial port settings
-        port.reconfigure(&|port_config|{
-            port_config.set_baud_rate(serial::Baud115200)?;
-            port_config.set_char_size(serial::Bits8);
-            port_config.set_parity(serial::ParityNone);
-            port_config.set_stop_bits(serial::Stop1);
-            port_config.set_flow_control(serial::FlowNone);
-    
-            Ok(())
-        })?;
-    
-        //timeout listening the port
-        port.set_timeout(Duration::from_millis(timeout))?;  
-
         let bus = Modbus{
-            port: Arc::new(Mutex::new(port)),
-            status: Arc::new(RwLock::new(DISCONNECT))
+            port: ModbusPort::open(port)?.config()?.timeout(timeout)?,
+            status: ComStatus::default()
         };
 
        Ok(bus)
@@ -52,100 +86,91 @@ impl Modbus{
     /// running modbus services: listening the port and running modbus timer.
     pub fn run(&self, tx: Arc<Mutex<Sender<(&'static str, [u8; 16])>>>)->(JoinHandle<()>, JoinHandle<()>){
 
-        let connection_checker = self.clone();
-        let listener = self.clone();
+        let heartbeat = self.clone().create_heartbet();
+        let listener = self.clone().create_listener(tx);
 
-        let checker = connection_checker.run_heartbeat();
-        
-        let listener = listener.run_listening(tx);
+        let heartbeat = thread::spawn(heartbeat);
+        let listener = thread::spawn(listener);
 
-        (checker, listener)
+        (heartbeat, listener)
     }
 
     /// athomary operation to send data into modbus and return a reply immediately.
-    pub fn send(&self, data: &[u16])->Result<ModbusMsg, Box<dyn Error + '_>>{
+    pub fn send(&self, msg: &ModbusMsg)->Result<ModbusMsg, Box<dyn Error + '_>>{
 
-        Log::write(format!("sending modbus message: {data:?}").as_str());
-        let msg = ModbusMsg::from(data, data.len());
+        Log::write(format!("sending modbus message: {:?}", msg.data()).as_str());
 
-        if let Ok(mut port_guard) = self.port.lock(){
+        let mut port_guard = self.port().lock()?;
 
-            Self::sending(port_guard.borrow_mut(), msg.data())?;
-            let returned_msg = Self::reading(&mut port_guard)?;
-            
-            thread::sleep(Duration::from_millis(2));
-            drop(port_guard);
+        Self::sending(&mut port_guard, msg.data())?;
+        let returned_msg = Self::reading(&mut port_guard)?;
 
-            Ok(returned_msg)
-        }
-        else{
-            Err("Error trying lock the serial port.".into())
-        }
-        
-        
+        // drop(port_guard)
+
+        // Modbus RTU requires min 2 ms delay.
+        thread::sleep(Duration::from_millis(2));
+
+        Ok(returned_msg)
     }
 
-    /// clones an exist modbus struct owned the serial port. 
+    /// try to read the port once time
+    pub fn read_once(&self, feedback: &mut [u8])->Result<ModbusMsg, Box<dyn Error+ '_>>{
+        
+        let bytes_count = self.port().lock()?.read(feedback)?;
+        Ok(ModbusMsg::from(feedback, bytes_count))
+    }
+
     pub fn clone(&self)->Self{
         Modbus{
-            port: Arc::clone(&self.port),
-            status: Arc::clone(&self.status)
+            port: self.port.clone(),
+            status: self.status.clone()
         }
     }
-    pub fn get_status(&self)->u8{
-        *self.status.read().unwrap()
+
+    pub fn port(&self)->&ModbusPort{
+        self.port.borrow()
     }
-    pub fn set_status(&mut self, status: u8){
-        *self.status.write().unwrap() = status
-    }
+
 
 
     // private API
-    fn run_heartbeat(mut self)->JoinHandle<()>{
 
-        let heartbeat_forever = move || {
-            
+    fn create_heartbet(mut self)->impl FnOnce() + Send + 'static{
+
+        let heartbeat_msg = ModbusMsg::from(&HEARTBEAT[..], HEARTBEAT.len());
+
+        move || {
             loop{
 
                 Log::write("sending heartbeat...");
 
-                let com_status = match self.send(&HEARTBEAT){
-                    Ok(_) => {
-                        Log::write("heartbeat reply received. com status: connect.");
-                        //self.set_status(CONNECT)
-                        CONNECT
-                    }
-                    Err(err) => {Log::write(
-                        format!("catn`t handle a modbus message: {err}\n
-                        no heartbeat reply. com status: disconect.").as_str());
-                        DISCONNECT
-                        //self.set_status(DISCONNECT)
-                    }               
-                };
-
-                self.set_status(com_status);
+                if self.send(&heartbeat_msg).is_ok(){
+                    Log::write("heartbeat reply received. com status: connect.");
+                    self.set_connect()
+                }
+                else{
+                    Log::write("no heartbeat reply. com status: disconect.");
+                    self.set_disconnect()
+                }
 
                 thread::sleep(Duration::from_secs(HEARTBEAT_FREQ))
             }
-        };
-
-        thread::spawn(heartbeat_forever)
+        }
     }
 
-    fn run_listening(self, tx: Arc<Mutex<Sender<(&'static str, [u8; 16])>>>)->JoinHandle<()>{
+    fn create_listener(self, tx: Arc<Mutex<Sender<(&'static str, [u8; 16])>>>)->impl FnOnce() + Send + 'static{
 
         let mut feedback = [0;16];
 
-        let listening_forever = move || {
+        move || {
             loop{
-                if let Ok(_) = self.listening_once(&mut feedback){
+                if let Ok(msg) = self.read_once(&mut feedback){
 
-                    if feedback[..2] == [0x00, 0x64]{
+                    if msg.is_event(){
                         Log::write(
-                            format!("received event: {feedback:?}, 
-                            time: {}", Local::now().to_rfc3339()).as_str());
+                            format!("received event: {:?}, time: {}", msg.data(), Local::now().to_rfc3339()).as_str());
                             
-                        //stack.lock().unwrap().push(TOPIC_EVENT);
+                        //tx.lock().unwrap().send((TOPIC_EVENT, msg.data())).unwrap();
                         tx.lock().unwrap().send((TOPIC_EVENT, feedback)).unwrap();
                     }
                     else{
@@ -153,51 +178,43 @@ impl Modbus{
                     }
                 }
             }
-        };
-
-        thread::spawn(listening_forever)
+        }
     }
 
-    fn sending(port_guard: &mut MutexGuard<SystemPort>, data: &[u8])->Result<(), Box<dyn Error>>{
+    fn sending(port_guard: &mut MutexGuard<SystemPort>, data: &[u8])->Result<(), io::Error>{
 
-        let mut count = 10;
-
-        while count > 0{
-            if let Ok(_) = port_guard.write(data){
-                return Ok(())
+        loop{
+            if port_guard.write(data).is_err_and(|err|err.kind() == ErrorKind::Interrupted){
+                continue;
             }
-            count -= 1;
+            return Ok(())
         }
-        Err("catn`t send, no connection.".into())
     }
     
-    fn reading(mut port_guard: &mut MutexGuard<SystemPort>)->Result<ModbusMsg, Box<dyn Error>>{
+    fn reading(port_guard: &mut MutexGuard<SystemPort>)->Result<ModbusMsg, io::Error>{
 
-        let mut feedback = [0;8];
-
-        let mut count = 10;  // count of attempt read the buffer
-
-        //while count > 0{
-        while count > 0{
-            //println!("reading athomary...");
-            if let Ok(bytes_count) = port_guard.read(&mut feedback){
-                return Ok(ModbusMsg::from(&feedback[..], bytes_count))
+        let mut feedback = [0; 8];
+ 
+        loop{
+            match port_guard.read(&mut feedback){
+                Ok(bytes_count)=> return Ok(ModbusMsg::from(&feedback[..], bytes_count)),
+                Err(err) if err.kind() == ErrorKind::Interrupted => continue,
+                Err(err) => return Err(err)
             }
-            count -=1;
         }
-            
-        Err("no reply.".into())
-        //}
-
     }
-
-    fn listening_once(&self, feedback: &mut [u8])->Result<(), Box<dyn Error+ '_>>{
-
-        let bytes_count = self.port.lock()?.borrow_mut().read(feedback)?;
-
-        Ok(())
-    }
-
 }
 
 
+impl Deref for Modbus{
+    type Target = ComStatus;
+    fn deref(&self) -> &Self::Target {
+        self.status.borrow()
+    }
+}
+
+impl DerefMut for Modbus{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.status.borrow_mut()
+    }
+}

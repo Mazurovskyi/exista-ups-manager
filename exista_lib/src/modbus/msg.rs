@@ -5,7 +5,7 @@ pub struct ModbusMsg{
 }
 impl ModbusMsg{
     /// creates a new modbus message.
-    pub fn from<T: IntoMod + ?Sized>(data: &T, len: usize)->Self{
+    pub fn from<T: IntoMsg + ?Sized>(data: &T, len: usize)->Self{
         data.into_modbus_msg(len)
     }
 
@@ -28,11 +28,21 @@ impl ModbusMsg{
         (temp as i32).into()
     }
 
+    pub fn is_event(&self)->bool{
+        // event message begins with 0x0, 0x64.
+        if self.data()[..2] == [0x00, 0x64]{
+            true
+        }
+        else{
+            false
+        }
+    }
+
 }
 
 
 
-pub trait IntoMod {
+pub trait IntoMsg {
 
     fn into_modbus_msg(&self, len: usize)->ModbusMsg;
 
@@ -54,7 +64,7 @@ pub trait IntoMod {
     }
 }
 
-impl IntoMod for [u16]{
+impl IntoMsg for [u16]{
 
     fn into_modbus_msg(&self, len: usize)->ModbusMsg{
 
@@ -72,7 +82,7 @@ impl IntoMod for [u16]{
     }
 }
 
-impl IntoMod for [u8] {
+impl IntoMsg for [u8] {
     fn into_modbus_msg(&self, len: usize)->ModbusMsg{
         let msg = Vec::from(self);
         ModbusMsg{msg, len}

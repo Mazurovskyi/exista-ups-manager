@@ -1,11 +1,11 @@
-use std::{sync::Mutex, borrow::Borrow, time::Duration};
+use std::{sync::{Mutex, RwLock}, borrow::Borrow, time::Duration, ops::Deref};
 use once_cell::sync::Lazy;
 
 use crate::json_patterns::{Insertion};
 use std::error::Error;
 use std_semaphore::Semaphore;
 
-
+use std::sync::Arc;
 pub struct AppInfo{
     serial_number: String,
     ups_serial_number: String,
@@ -95,7 +95,60 @@ pub const KEEP_ALIVE: u64 = 60;
 
 //Modbus constants
 pub const PORT: &str = "/dev/ttyUPS";
-pub const TIMEOUT: u64 = 1;
+
+// UPS delay consists about 5 ms. Setting timeout to 10 ms allows to receive replies without timeout errors.
+pub const TIMEOUT: u64 = 10;    
+
+
+
+///UPS com status
+pub struct ComStatus(Arc<RwLock<Connection>>);
+pub enum Connection{
+    Connect,
+    Disconnect
+}
+impl ComStatus{
+    pub fn set(&mut self, status: Connection){
+        *self.0.write().unwrap() = status;
+    }
+    pub fn set_connect(&mut self){
+        *self.0.write().unwrap() = Connection::Connect;
+    }
+    pub fn set_disconnect(&mut self){
+        *self.0.write().unwrap() = Connection::Disconnect;
+    }
+    pub fn clone(&self)->Self{
+        ComStatus(Arc::clone(&self.0))
+    }
+    pub fn is_connect(&self)->bool{
+        if let Connection::Connect = *self.0.read().unwrap(){
+            return true
+        }
+        false
+    }
+    pub fn get_status(&self)->u8{
+        if self.is_connect(){
+            CONNECT
+        }
+        else{
+            DISCONNECT
+        }
+    }
+}
+impl Default for ComStatus{
+    fn default() -> Self {
+        Self(Arc::new(RwLock::new(Connection::Disconnect)))
+    }
+}
+
+// status representation
+const CONNECT: u8 = 1;
+const DISCONNECT: u8 = 2;
+
+
+
+
+
 
 
 
@@ -104,9 +157,7 @@ pub const TIMEOUT: u64 = 1;
 //const SERIAL_NUMBER: &str = "xxx"; //unknown
 
 //----BATTERY_INFO----
-pub const CONNECT: u8 = 1;
-pub const DISCONNECT: u8 = 2;
-// const COM_STATUS: i32 = HEARTBEAT -> 1 (CONNECT) or 2 (DISCONNECT); 
+
 const READ_DC_STATUS: [u16; 4] =      [0x11, 0x03, 0x17, 0x01];
 const READ_BATTERY_STATUS: [u16; 4] = [0x11, 0x03, 0x00, 0x01];
 const READ_VOLTAGE: [u16; 4] =        [0x11, 0x03, 0x04, 0x01];

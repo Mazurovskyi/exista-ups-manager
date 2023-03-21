@@ -43,7 +43,13 @@ impl App{
 
         Log::write("Mqtt client configured.");
 
-        Ok(App{modbus: Some(modbus), mqtt_client: Some(mqtt_client), channel: request_channel})
+        Ok(
+            App{
+                modbus: Some(modbus), 
+                mqtt_client: Some(mqtt_client), 
+                channel: request_channel
+            }
+        )
     }
 
     /// run mqtt client and modbus communication.
@@ -54,9 +60,9 @@ impl App{
 
         Log::write("running modbus...");
         let event_tx = app_config.channels().get_transmitter()?;
-        let (_checker, _listener )= app_config.modbus().run(event_tx);
+        let (_heartbeat, _listener)= app_config.modbus().run(event_tx);
 
-        Log::write("everything is running.\n\n");
+        Log::write("config is done.\n\n");
         app_config.run_forever()?;
 
         Ok(())
@@ -79,7 +85,7 @@ impl App{
             
             let time = Local::now().to_rfc3339();
             Log::write(format!("\nJson pattern is ready: {time}\n{pattern}").as_str());
-           
+            
             if let Err(err) = pattern.publish(self.mqtt_client(), DELIVERY_TIME){
                 Log::write(format!("Delivery time out. Message has not delivered. {err}").as_str());
             }

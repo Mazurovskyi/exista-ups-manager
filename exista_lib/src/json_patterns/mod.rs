@@ -21,12 +21,12 @@ use crate::mqtt::MqttClient;
 
 use chrono::{DateTime, Local};
 
-pub trait Fill{
+pub trait Fill_old{
     fn build(topic: &str)->Result<JsonValue, Box<dyn Error>>;
-    fn fill(&mut self, values: IntoIter<JsonValue>);
+    fn fill(&mut self, values: Vec<JsonValue>);
     fn do_fill(&mut self, values: &mut IntoIter<JsonValue>);
 }
-impl Fill for JsonValue{
+impl Fill_old for JsonValue{
 
     /// Takes the Json object from file, that may be filled by fill() method.
     /// Returns Error if the file path is not correct or it is not JSON-format.
@@ -38,45 +38,13 @@ impl Fill for JsonValue{
 
         let content = fs::read_to_string(path)?;
         let mut json_pattern: JsonValue = json::parse(&content)?;
-
-        /*
-        let pattern = match topic{
-            "gateway/event/battery" => object! {
-                serialNumber: null,
-                eventTime: null,
-                batteryEvent: null,
-                batteryMissingCounter: null,
-                acBatterySwitchCounter: null
-            },
-            "gateway/batteryInfo.rep" => object! {
-                serialNumber: null,
-                batteryInfo: {
-                    comStatus: null,
-                    dcStatus: null,
-                    batteryStatus: null,
-                    batteryVoltage: null,
-                    batteryCurrent: null,
-                    soc: null,
-                    soh: null,
-                    timeLeft: null
-                }
-            },
-            "gateway/upsInfo" => object! {
-                moduleName: null,
-                firmwareVersion: null,
-                upsSerialNumber: "NA"
-            },
-            _=> process::exit(0)
-        };
-        
-        Ok(pattern)
-        */
         
         Ok(json_pattern.remove(topic))
     }
 
 
-    fn fill(&mut self, mut values: IntoIter<JsonValue>) {
+    fn fill(&mut self, mut values: Vec<JsonValue>) {
+        let mut values = values.into_iter();
         self.do_fill(& mut values)
     }
 
@@ -250,7 +218,8 @@ impl Insertion for BatteryInfo{
         
 
         for (i, request) in BATTERY_INFO_REQUEST.iter().enumerate(){
-            let feedback = bus.send(request)?;
+            let msg = ModbusMsg::from(&request[..], request.len());
+            let feedback = bus.send(&msg)?;
             let value = Self::decode(feedback, i);
             self.push(value)
         }
@@ -276,10 +245,15 @@ impl Insertion for BatteryInfo{
 impl Insertion for UpsInfo{
     fn fill<'a>(&'a mut self, bus: &'a Modbus)->Result<(), Box<dyn Error + '_>> {
         
-        let module_name = bus.send(&READ_MAX_AUTHONOMY_TIME)?;
+        
+        let msg = ModbusMsg::from(&READ_MAX_AUTHONOMY_TIME[..], READ_MAX_AUTHONOMY_TIME.len());
+        let module_name = bus.send(&msg)?;
         let module_name = Self::decode_module_name(module_name);
 
-        let fw_version = bus.send(&READ_FW_VERSION)?;
+
+
+        let msg = ModbusMsg::from(&READ_FW_VERSION[..], READ_FW_VERSION.len());
+        let fw_version = bus.send(&msg)?;
         let fw_version = Self::decode_fw_version(fw_version);
 
         let ups_serial_num = UPS_SERIAL_NUMBER.to_owned();

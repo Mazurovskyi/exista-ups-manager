@@ -90,7 +90,6 @@ impl MqttClient{
     pub fn options(&self)->ConnectOptions{
        self.connect_options.clone().unwrap()
     }
-
     fn from(client: AsyncClient, connect_options: ConnectOptions)->Self{
         MqttClient { client, connect_options: Some(connect_options)}
     }
@@ -106,7 +105,6 @@ impl MqttClient{
         let token = self.client().publish(msg);
 
         token.wait_for(timeout)
-
     }
 
     // Callback for a successful connection to the broker. Subscribe the topics
@@ -127,7 +125,6 @@ impl MqttClient{
         thread::sleep(Duration::from_millis(1000));
         client.reconnect_with_callbacks(Self::on_connect_success, Self::on_connect_failure);
     }
-
 
 }
 
