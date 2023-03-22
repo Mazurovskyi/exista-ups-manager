@@ -5,27 +5,37 @@ use std::ops::Deref;
 
 use json::JsonValue;
 
-use crate::{json_patterns::{Fill_old, BatteryInfo, BatteryEvent}};
+use crate::json_patterns::JsonPattern;
 
 use crate::modbus::{Modbus, msg::ModbusMsg};
 
 mod ups_info;
-use crate::requests::ups_info::UpsInfo;
+mod battery_info;
+mod battery_event;
+use crate::requests::{ups_info::UpsInfo, battery_info::BatteryInfo, battery_event::BatteryEvent};
 
 
 
-pub struct Request(Box<dyn Fill>);
+pub struct Request(Box<dyn RequestObject>);
 impl Request{
     pub fn ups_info()->Self{
         Self(Box::new(UpsInfo::new()))
     }
+    pub fn battery_info()->Self{
+        Self(Box::new(BatteryInfo::new()))
+    }
+    pub fn battery_event(event: ModbusMsg)->Self{
+        Self(Box::new(BatteryEvent::new(event)))
+    }
 }
+
 impl Deref for Request{
-    type Target = Box<dyn Fill>;
+    type Target = Box<dyn RequestObject>;
     fn deref(&self) -> &Self::Target {
         self.0.borrow()
     }
 }
+
 impl DerefMut for Request{
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.0.borrow_mut()
@@ -33,18 +43,23 @@ impl DerefMut for Request{
 }
 
 
-pub trait Fill{
+
+pub trait RequestObject : MqttSending{
     fn fill_with_data<'a>(&mut self, bus: &'a Modbus)->Result<(), Box<dyn Error + 'a>>;
 }
 
+pub trait MqttSending{
+    fn serialize(&self)->String;
+    fn topic(&self)->&str;
+    fn qos(&self)->i32;
+}
 
-trait GetModbusData{
+trait ModbusData : RequestObject{
     fn get_modbus_data<'a>(&self, bus: &'a Modbus)->Result<Vec<ModbusMsg>, Box<dyn Error + 'a>>;
     fn parse_modbus_data(&self, raw_data: Vec<ModbusMsg>)->Vec<JsonValue>;
 }
 
-
-trait CreateJson{
+trait JsonCreation : RequestObject{
     fn build_json()->JsonValue;
 }
 
@@ -62,31 +77,4 @@ trait CreateJson{
 
 
 
-impl CreateJson for BatteryInfo{
-    fn build_json()->JsonValue {
-        object! {
-            serialNumber: null,
-            batteryInfo: {
-                comStatus: null,
-                dcStatus: null,
-                batteryStatus: null,
-                batteryVoltage: null,
-                batteryCurrent: null,
-                soc: null,
-                soh: null,
-                timeLeft: null
-            }
-        }
-    }
-}
-impl CreateJson for BatteryEvent{
-    fn build_json()->JsonValue {
-        object! {
-            serialNumber: null,
-            eventTime: null,
-            batteryEvent: null,
-            batteryMissingCounter: null,
-            acBatterySwitchCounter: null
-        }
-    }
-}
+

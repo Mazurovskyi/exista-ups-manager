@@ -1,33 +1,19 @@
 
-use std::borrow::BorrowMut;
-use std::error::Error;
-use std::process;
-use std::time::Duration;
 use json::JsonValue;
-use paho_mqtt::AsyncClient;
+
 use std::iter::Iterator;
 use std::iter::IntoIterator;
 use std::vec::IntoIter;
-use std::fs;
-use std::env;
 
-use crate::application::constants::*;
-use crate::modbus::Modbus;
-
-use crate::modbus::msg::ModbusMsg;
-use std::fmt::Display;
-
-use crate::mqtt::MqttClient;
-
-use chrono::{DateTime, Local};
-
-pub trait Fill_old{
-    fn build(topic: &str)->Result<JsonValue, Box<dyn Error>>;
+/// trait provides method to insert data into Json-object
+pub trait JsonPattern{
+    //fn build(topic: &str)->Result<JsonValue, Box<dyn Error>>;
     fn fill(&mut self, values: Vec<JsonValue>);
     fn do_fill(&mut self, values: &mut IntoIter<JsonValue>);
 }
-impl Fill_old for JsonValue{
+impl JsonPattern for JsonValue{
 
+    /*
     /// Takes the Json object from file, that may be filled by fill() method.
     /// Returns Error if the file path is not correct or it is not JSON-format.
     /// Returns Null if the supplied topic name exists. 
@@ -41,7 +27,7 @@ impl Fill_old for JsonValue{
         
         Ok(json_pattern.remove(topic))
     }
-
+    */
 
     fn fill(&mut self, mut values: Vec<JsonValue>) {
         let mut values = values.into_iter();
@@ -70,8 +56,8 @@ impl Fill_old for JsonValue{
 
 
 
-
-pub struct BatteryInfo{
+/*
+ pub struct BatteryInfo{
     json_pattern: JsonValue,
     json_data: Option<Vec<JsonValue>>,
     topic: &'static str
@@ -314,6 +300,7 @@ impl Insertion for BatteryEvent{
         client.publish(self, timeout, self.topic)
     }
 }
+*/
 
 
 
@@ -327,18 +314,6 @@ impl Insertion for BatteryEvent{
 
 
 
-impl Display for BatteryInfo{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "(BatteryInfo:,\n{})", self.json_pattern.pretty(4))
-    }
-}
-impl Display for UpsInfo{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-         write!(f, "(UPSInfo:,\n{})", self.json_pattern.pretty(4))
-    }
-}
-impl Display for BatteryEvent{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-         write!(f, "(BatteryEvent:,\n{})", self.json_pattern.pretty(4))
-    }
-}
+
+
+

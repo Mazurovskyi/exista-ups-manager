@@ -14,8 +14,9 @@ use paho_mqtt::{AsyncClient, connect_options, ConnectOptions};
 
 use crate::application::constants::*;
 use crate::application::loger::Log;
-use crate::json_patterns::Insertion;
+
 use crate::modbus::Modbus;
+use crate::requests::Request;
 use crate::mqtt::msg::Handler;
 mod msg;
 
@@ -94,12 +95,12 @@ impl MqttClient{
         MqttClient { client, connect_options: Some(connect_options)}
     }
 
-    pub fn publish(&self, pattern: & dyn Insertion, timeout: Duration, topic: &str)->Result<(), paho_mqtt::Error>{
+    pub fn publish(&self, request: &Request, timeout: Duration)->Result<(), paho_mqtt::Error>{
 
         let msg = paho_mqtt::MessageBuilder::new()
-                .topic(topic)
-                .payload(pattern.serialize())
-                .qos(0)
+                .topic(request.topic())
+                .payload(request.serialize())
+                .qos(request.qos())
                 .finalize();
 
         let token = self.client().publish(msg);

@@ -1,7 +1,7 @@
 use std::{sync::{Mutex, RwLock}, borrow::Borrow, time::Duration, ops::Deref};
 use once_cell::sync::Lazy;
 
-use crate::json_patterns::{Insertion};
+
 use std::error::Error;
 use std_semaphore::Semaphore;
 
@@ -108,9 +108,6 @@ pub enum Connection{
     Disconnect
 }
 impl ComStatus{
-    pub fn set(&mut self, status: Connection){
-        *self.0.write().unwrap() = status;
-    }
     pub fn set_connect(&mut self){
         *self.0.write().unwrap() = Connection::Connect;
     }
@@ -135,6 +132,7 @@ impl ComStatus{
         }
     }
 }
+
 impl Default for ComStatus{
     fn default() -> Self {
         Self(Arc::new(RwLock::new(Connection::Disconnect)))
@@ -158,13 +156,13 @@ const DISCONNECT: u8 = 2;
 
 //----BATTERY_INFO----
 
-const READ_DC_STATUS: [u16; 4] =      [0x11, 0x03, 0x17, 0x01];
-const READ_BATTERY_STATUS: [u16; 4] = [0x11, 0x03, 0x00, 0x01];
-const READ_VOLTAGE: [u16; 4] =        [0x11, 0x03, 0x04, 0x01];
-const READ_CURRENT_VALUE: [u16; 4] =  [0x11, 0x03, 0x12, 0x01];
-const READ_SOC: [u16; 4] =            [0x11, 0x03, 0x1C, 0x01];
-const READ_SOH: [u16; 4] =            [0x11, 0x03, 0x1D, 0x01];
-const READ_BACKUP_TIME: [u16; 4] =    [0x11, 0x03, 0x1B, 0x01]; //same as REMAIN_TIME
+pub const READ_DC_STATUS: [u16; 4] =      [0x11, 0x03, 0x17, 0x01];
+pub const READ_BATTERY_STATUS: [u16; 4] = [0x11, 0x03, 0x00, 0x01];
+pub const READ_VOLTAGE: [u16; 4] =        [0x11, 0x03, 0x04, 0x01];
+pub const READ_CURRENT_VALUE: [u16; 4] =  [0x11, 0x03, 0x12, 0x01];
+pub const READ_SOC: [u16; 4] =            [0x11, 0x03, 0x1C, 0x01];
+pub const READ_SOH: [u16; 4] =            [0x11, 0x03, 0x1D, 0x01];
+pub const READ_BACKUP_TIME: [u16; 4] =    [0x11, 0x03, 0x1B, 0x01]; //same as REMAIN_TIME
 
 //----BATTERY_EVENT----
 

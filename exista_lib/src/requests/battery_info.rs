@@ -4,27 +4,26 @@ use std::fmt::Display;
 
 use json::JsonValue;
 
-
 use crate::requests::ModbusMsg;
 use crate::application::constants::*;
 use super::*;
 
-
-pub struct UpsInfo{
+pub struct BatteryInfo{
     json: JsonValue,
     modbus_requests: Vec<ModbusMsg>,
     publish_topic: &'static str,
     qos: i32
 }
-impl UpsInfo{
+impl BatteryInfo{
     pub fn new()->Self{
-        Self { 
+        Self {
             json: Self::build_json(), 
             modbus_requests: Self::build_request_list(),
-            publish_topic: TOPIC_UPS_INFO,
+            publish_topic: TOPIC_BATTERY_INFO_REP,
             qos: 0
         }
     }
+
 
     fn json(&self)->&JsonValue{
         self.json.borrow()
@@ -36,45 +35,44 @@ impl UpsInfo{
         self.modbus_requests.borrow()
     }
     fn build_request_list()->Vec<ModbusMsg>{
-        [READ_MAX_AUTHONOMY_TIME, READ_FW_VERSION]
+        [READ_DC_STATUS, READ_BATTERY_STATUS, READ_VOLTAGE,
+        READ_CURRENT_VALUE, READ_SOC, READ_SOH, READ_BACKUP_TIME]
             .iter()
             .map(|msg|ModbusMsg::from(&msg[..], msg.len()))
             .collect()
     }
-    
+
 
     // decoding operations 
-    fn get_module_name(&self, msg: ModbusMsg)->Option<&str>{
-        match *msg.data().get(4)?{
-            0=> Some(HOURS_1),
-            1=> Some(HOURS_4),
-            _=> Some(HOURS_NA)
+    fn decode(msg: ModbusMsg, i: usize)->JsonValue{
+        if i == 4 || i == 5 {
+            ModbusMsg::registers_value_percent(msg.data())
         }
-    }
-    fn get_fw_version(&self, msg: ModbusMsg)->Option<String>{
-        let msg = msg.data();
-        
-        let registers_value = ((*msg.get(3)? as u32) << 8) + (*msg.get(4)? as u32);
-
-        let main_vers = (registers_value - 0xA003) / 255;
-        let sub_vers =  (registers_value - 0xA003) % 255;
-
-        Some(format!("{main_vers}.{sub_vers}"))
+        else{
+            ModbusMsg::registers_value(msg.data())
+        } 
     }
 }
 
-
-impl JsonCreation for UpsInfo{
+impl JsonCreation for BatteryInfo{
     fn build_json()->JsonValue {
         object! {
-            moduleName: null,
-            firmwareVersion: null,
-            upsSerialNumber: null
+            serialNumber: null,
+            batteryInfo: {
+                comStatus: null,
+                dcStatus: null,
+                batteryStatus: null,
+                batteryVoltage: null,
+                batteryCurrent: null,
+                soc: null,
+                soh: null,
+                timeLeft: null
+            }
         }
     }
 }
 
-impl MqttSending for UpsInfo{
+impl MqttSending for BatteryInfo{
     fn serialize(&self)->String{
         self.json.dump()
     }
@@ -86,8 +84,17 @@ impl MqttSending for UpsInfo{
     }
 }
 
-impl RequestObject for UpsInfo{
+impl RequestObject for BatteryInfo{
     fn fill_with_data<'a>(&mut self, bus: &'a Modbus)->Result<(), Box<dyn Error + 'a>>{
+
+        unsafe{
+            let binding = APP_INFO.lock()?;
+            let serial_numver = binding.get_serial_number();
+            //self.insert(0, serial_numver.into());
+        }
+
+        let com_status = bus.get_status();
+        //self.insert(1, com_status.into());
 
         let raw_data = self.get_modbus_data(bus)?;
         let mut parsed_data = self.parse_modbus_data(raw_data);
@@ -100,35 +107,23 @@ impl RequestObject for UpsInfo{
     }
 }
 
-
-impl ModbusData for UpsInfo{
-
+impl ModbusData for BatteryInfo{
     fn get_modbus_data<'a>(&self, bus: &'a Modbus)->Result<Vec<ModbusMsg>, Box<dyn Error + 'a>>{
-        
         let mut modbus_replies = Vec::new();
 
         for msg in self.requests_list(){
             modbus_replies.push(bus.send(msg)?)
         };
+
         Ok(modbus_replies)
     }
-    
     fn parse_modbus_data(&self, raw_data: Vec<ModbusMsg>)->Vec<JsonValue>{
-
-        let mut iter = raw_data.into_iter();
-
-        let module_name: JsonValue = self.get_module_name(iter.next().unwrap()).into();
-        let fw_version: JsonValue =  self.get_fw_version(iter.next().unwrap()).into();
-
-        Vec::from([module_name, fw_version])
+        raw_data.into_iter().enumerate().map(|(i, msg)|Self::decode(msg, i)).collect()
     }
 }
 
-
-impl Display for UpsInfo{
+impl Display for BatteryInfo{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-         write!(f, "(UPSInfo:,\n{})", self.json().pretty(4))
+        write!(f, "(BatteryInfo:,\n{})", self.json().pretty(4))
     }
 }
-
-
