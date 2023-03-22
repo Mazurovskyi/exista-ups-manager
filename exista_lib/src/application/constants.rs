@@ -1,9 +1,9 @@
-use std::{sync::{Mutex, RwLock}, borrow::Borrow, time::Duration, ops::Deref};
+use std::{sync::{Mutex, RwLock}, borrow::Borrow, time::Duration};
 use once_cell::sync::Lazy;
 
 
-use std::error::Error;
-use std_semaphore::Semaphore;
+//use std::error::Error;
+//use std_semaphore::Semaphore;
 
 use std::sync::Arc;
 pub struct AppInfo{
@@ -21,9 +21,9 @@ impl AppInfo{
         self.serial_number = serial_number
     }
     pub fn get_serial_number(&self)->&str{
-        unsafe{
-            self.serial_number.borrow()
-        }
+        
+        self.serial_number.borrow()
+        
     }
 }
 
@@ -81,8 +81,8 @@ pub const JSON_PATTERNS: &str = "/home/schindler/rust_exista/patterns.json";
 // MQTT constants
 pub const TOPIC_BATTERY_INFO_REQ: &str = "gateway/batteryInfo.req";
 pub const TOPIC_BATTERY_INFO_REP: &str = "gateway/batteryInfo.rep";
-pub const TOPIC_DEVICE_INFO: &str = "gateway/deviceInfo";
-pub const TOPIC_UPS_INFO: &str = "gateway/upsInfo";
+pub const TOPIC_DEVICE_INFO: &str = "gateway/deviceInfo";   // recive
+pub const TOPIC_UPS_INFO: &str = "gateway/upsInfo";         // reply
 pub const TOPIC_EVENT: &str = "gateway/event/battery";
 pub const SUBSCRIBE_TOPICS: [&str;2] = [TOPIC_BATTERY_INFO_REQ, TOPIC_DEVICE_INFO];
 pub const DELIVERY_TIME: Duration = Duration::from_secs(1);
@@ -175,12 +175,12 @@ pub const HOURS_4: &str = "UPS4H";
 pub const HOURS_NA: &str = "unknown";
 
 //----else----
-const READ_REMAIN_TIME: [u16; 4] =    [0x11, 0x03, 0x1A, 0x01];
-const READ_CHARGING_STATUS: [u16; 4]= [0x11, 0x03, 0x19, 0x01];
-const GET_SIGN: [u16; 4] =            [0x11, 0x03, 0x11, 0x01];
-const GET_TEMPERATURE: [u16; 4] =     [0x01, 0x03, 0x55, 0x01];
+const _READ_REMAIN_TIME: [u16; 4] =    [0x11, 0x03, 0x1A, 0x01];
+const _READ_CHARGING_STATUS: [u16; 4]= [0x11, 0x03, 0x19, 0x01];
+const _GET_SIGN: [u16; 4] =            [0x11, 0x03, 0x11, 0x01];
+const _GET_TEMPERATURE: [u16; 4] =     [0x01, 0x03, 0x55, 0x01];
 
-const CUBE_POWER_RESET: [u16; 4] =    [0x01, 0x06, 0x1F, 0xAA55];
+const _CUBE_POWER_RESET: [u16; 4] =    [0x01, 0x06, 0x1F, 0xAA55];
 pub const HEARTBEAT: [u16; 4] =       [0x01, 0x06, 0x50, 0x00];
 pub const HEARTBEAT_FREQ: u64 = 60;
 

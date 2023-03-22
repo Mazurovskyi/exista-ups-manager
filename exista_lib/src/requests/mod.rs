@@ -45,13 +45,13 @@ impl DerefMut for Request{
 
 impl Display for Request{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", *self)
+        write!(f, "{}", self.0)
     }
 }
 
 
 
-pub trait RequestObject : MqttSending{
+pub trait RequestObject : MqttSending + Display{
     fn fill_with_data<'a>(&mut self, bus: &'a Modbus)->Result<(), Box<dyn Error + 'a>>;
 }
 

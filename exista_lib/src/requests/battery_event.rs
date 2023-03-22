@@ -9,6 +9,7 @@ use chrono::Local;
 use crate::requests::ModbusMsg;
 use crate::application::constants::*;
 use crate::application::loger::Log;
+
 use super::*;
 
 pub struct BatteryEvent{
@@ -79,7 +80,7 @@ impl MqttSending for BatteryEvent{
 }
 
 impl RequestObject for BatteryEvent{
-    fn fill_with_data<'a>(&mut self, bus: &'a Modbus)->Result<(), Box<dyn Error + 'a>>{
+    fn fill_with_data<'a>(&mut self, _bus: &'a Modbus)->Result<(), Box<dyn Error + 'a>>{
 
         let mut parsed_data: Vec<JsonValue> = Vec::new();
 
@@ -93,10 +94,10 @@ impl RequestObject for BatteryEvent{
 
         let battery_event: JsonValue = self.decode(self.event()).into();
 
-        let acBatterySwitchCounter = 0;
-        let batteryMissingCounter = 0;
+        let ac_battery_switch_counter = 0;
+        let battery_missing_counter = 0;
 
-        parsed_data.extend_from_slice(&[date_time, battery_event, batteryMissingCounter.into(), acBatterySwitchCounter.into()]);
+        parsed_data.extend_from_slice(&[date_time, battery_event, battery_missing_counter.into(), ac_battery_switch_counter.into()]);
         
         self.json_mut().fill(parsed_data);
 

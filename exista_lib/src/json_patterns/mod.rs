@@ -5,6 +5,8 @@ use std::iter::Iterator;
 use std::iter::IntoIterator;
 use std::vec::IntoIter;
 
+
+
 /// trait provides method to insert data into Json-object
 pub trait JsonPattern{
     //fn build(topic: &str)->Result<JsonValue, Box<dyn Error>>;
@@ -29,12 +31,13 @@ impl JsonPattern for JsonValue{
     }
     */
 
-    fn fill(&mut self, mut values: Vec<JsonValue>) {
+    fn fill(&mut self, values: Vec<JsonValue>) {
         let mut values = values.into_iter();
         self.do_fill(& mut values)
     }
 
     fn do_fill(&mut self, values: &mut IntoIter<JsonValue>){
+        
         for (_name, el) in self.entries_mut(){
             
             if el.is_object(){

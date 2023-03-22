@@ -6,6 +6,7 @@ use json::JsonValue;
 
 use crate::requests::ModbusMsg;
 use crate::application::constants::*;
+
 use super::*;
 
 pub struct BatteryInfo{

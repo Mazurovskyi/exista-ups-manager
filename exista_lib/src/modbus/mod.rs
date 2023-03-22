@@ -7,7 +7,7 @@ use std::ops::{Deref, DerefMut};
 use serial:: {SystemPort, prelude::SerialPort};
 use std::time::Duration;
 
-use std::sync::{Arc, Mutex, MutexGuard, RwLock};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::io::ErrorKind;
 pub mod msg;
 use msg::ModbusMsg;
@@ -18,7 +18,7 @@ use chrono::Local;
 use crate::application::constants::*;
 
 use std::sync::mpsc::Sender;
-use std::sync::PoisonError;
+
 use std::io;
 
 

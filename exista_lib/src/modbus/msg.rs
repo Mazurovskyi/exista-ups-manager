@@ -13,7 +13,7 @@ impl ModbusMsg{
         self.msg.as_slice()
     }
     
-    pub fn len(&self)->&usize{
+    pub fn _len(&self)->&usize{
         &self.len
     }
 
@@ -48,6 +48,7 @@ pub trait IntoMsg {
 
     /// standart 16-bit crc
     fn crc(data: &[u8])->u16{
+        
         let table:[u16;2] = [ 0x0000, 0xA001];
         let mut crc = 0xFFFF as u16;
         let mut xor = 0;

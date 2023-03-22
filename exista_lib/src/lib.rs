@@ -4,7 +4,7 @@
 #[macro_use]
 extern crate json;
 
-use log::{info, warn, error, LevelFilter};
+//use log::{info, warn, error, LevelFilter};
 
 mod modbus;
 mod mqtt;

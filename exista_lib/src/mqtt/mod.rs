@@ -3,19 +3,17 @@ use std::borrow::Borrow;
 
 use {paho_mqtt, paho_mqtt::Message};
 
-use std::borrow::BorrowMut;
-use std::fmt::Display;
-use std::sync::mpsc;
+
 use std::sync::{Arc, Mutex, mpsc::Sender};
-use std::{env, process, sync::RwLock, thread, time::Duration};
+use std::{thread, time::Duration};
 use std::error::Error;
 
-use paho_mqtt::{AsyncClient, connect_options, ConnectOptions};
+use paho_mqtt::{AsyncClient,ConnectOptions};
 
 use crate::application::constants::*;
 use crate::application::loger::Log;
 
-use crate::modbus::Modbus;
+
 use crate::requests::Request;
 use crate::mqtt::msg::Handler;
 mod msg;

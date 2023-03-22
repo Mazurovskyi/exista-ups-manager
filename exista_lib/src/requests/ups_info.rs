@@ -4,7 +4,6 @@ use std::fmt::Display;
 
 use json::JsonValue;
 
-
 use crate::requests::ModbusMsg;
 use crate::application::constants::*;
 use super::*;
@@ -53,7 +52,7 @@ impl UpsInfo{
     }
     fn get_fw_version(&self, msg: ModbusMsg)->Option<String>{
         let msg = msg.data();
-        
+
         let registers_value = ((*msg.get(3)? as u32) << 8) + (*msg.get(4)? as u32);
 
         let main_vers = (registers_value - 0xA003) / 255;
@@ -106,7 +105,7 @@ impl ModbusData for UpsInfo{
     fn get_modbus_data<'a>(&self, bus: &'a Modbus)->Result<Vec<ModbusMsg>, Box<dyn Error + 'a>>{
         
         let mut modbus_replies = Vec::new();
-
+        
         for msg in self.requests_list(){
             modbus_replies.push(bus.send(msg)?)
         };
@@ -118,6 +117,7 @@ impl ModbusData for UpsInfo{
         let mut iter = raw_data.into_iter();
 
         let module_name: JsonValue = self.get_module_name(iter.next().unwrap()).into();
+
         let fw_version: JsonValue =  self.get_fw_version(iter.next().unwrap()).into();
 
         Vec::from([module_name, fw_version])

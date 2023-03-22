@@ -1,6 +1,6 @@
 
-use std::fs;
-use std::{env, env::VarError};
+
+use std::env;
 use std::io::{self, Write};
 
 use std::fs::File;

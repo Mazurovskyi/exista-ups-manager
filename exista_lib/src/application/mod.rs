@@ -3,16 +3,16 @@ use crate::modbus::Modbus;
 use crate::modbus::msg::ModbusMsg;
 use crate::mqtt::MqttClient;
 use crate::requests::Request;
-use paho_mqtt::{self, AsyncClient};
+
 pub mod constants;
 pub mod loger;
-use std::borrow::{Borrow, BorrowMut};
+use std::borrow::{BorrowMut};
 use std::error::Error;
-use std::process;
+
 use crate::application::loger::Log;
 use chrono::Local;
 use self::constants::*;
-use loger::*;
+
 
 pub struct App{
     modbus: Option<Modbus>,
@@ -62,7 +62,7 @@ impl App{
 
         Log::write("running modbus...");
         let event_tx = app_config.channels().get_transmitter()?;
-        let (_heartbeat, _listener)= app_config.modbus().run(event_tx);
+        let (_heartbeat, _listener) = app_config.modbus().run(event_tx);
 
         Log::write("config is done.\n\n");
         app_config.run_forever()?;
@@ -86,7 +86,7 @@ impl App{
             }
             
             let time = Local::now().to_rfc3339();
-            Log::write(format!("\nJson pattern is ready: {time}\n{request}").as_str());
+            Log::write(format!("\nJson pattern is ready: {time}\n{}", request).as_str());
             
             if let Err(err) = self.mqtt_client().publish(&request, DELIVERY_TIME){
                 Log::write(format!("Delivery time out. Message has not delivered. {err}").as_str());
