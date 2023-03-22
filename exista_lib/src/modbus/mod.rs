@@ -115,7 +115,6 @@ impl Modbus{
 
     /// try to read the port once time
     pub fn read_once(&self, feedback: &mut [u8])->Result<ModbusMsg, Box<dyn Error+ '_>>{
-        
         let bytes_count = self.port().lock()?.read(feedback)?;
         Ok(ModbusMsg::from(feedback, bytes_count))
     }

@@ -1,4 +1,5 @@
 
+use std::fmt::Display;
 use std::{error::Error, ops::DerefMut};
 use std::borrow::{BorrowMut, Borrow};
 use std::ops::Deref;
@@ -39,6 +40,12 @@ impl Deref for Request{
 impl DerefMut for Request{
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.0.borrow_mut()
+    }
+}
+
+impl Display for Request{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", *self)
     }
 }
 

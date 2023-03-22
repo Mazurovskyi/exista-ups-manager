@@ -1,6 +1,8 @@
 
 use crate::modbus::Modbus;
+use crate::modbus::msg::ModbusMsg;
 use crate::mqtt::MqttClient;
+use crate::requests::Request;
 use paho_mqtt::{self, AsyncClient};
 pub mod constants;
 pub mod loger;
@@ -71,22 +73,22 @@ impl App{
     fn run_forever(mut self)->Result<(), Box<dyn Error>>{
         while let Ok(pattern) = self.channels().recv(){
 
-            let mut pattern: Box<dyn Insertion> = match pattern{
-                (TOPIC_BATTERY_INFO_REQ,_) => Box::new(BatteryInfo::build()?),
-                (TOPIC_DEVICE_INFO, _) =>     Box::new(UpsInfo::build()?),          //panic here while unwrap()
-                (TOPIC_EVENT, msg) =>         Box::new(BatteryEvent::build(msg)?),
+            let mut request = match pattern{
+                (TOPIC_BATTERY_INFO_REQ,_) => Request::battery_info(),
+                (TOPIC_DEVICE_INFO, _) =>     Request::ups_info(),     
+                (TOPIC_EVENT, msg) =>         Request::battery_event(ModbusMsg::from(&msg[..], msg.len())),
                 _ => return Err("unreachable topic".into())
             };
 
-            if let Err(err) = pattern.fill(self.modbus()){
+            if let Err(err) = request.fill_with_data(self.modbus()){
                 Log::write(format!("Error while trying to fill pattern with data: {err}").as_str());
                 continue;
             }
             
             let time = Local::now().to_rfc3339();
-            Log::write(format!("\nJson pattern is ready: {time}\n{pattern}").as_str());
+            Log::write(format!("\nJson pattern is ready: {time}\n{request}").as_str());
             
-            if let Err(err) = pattern.publish(self.mqtt_client(), DELIVERY_TIME){
+            if let Err(err) = self.mqtt_client().publish(&request, DELIVERY_TIME){
                 Log::write(format!("Delivery time out. Message has not delivered. {err}").as_str());
             }
             else {
