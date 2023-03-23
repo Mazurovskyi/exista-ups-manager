@@ -1,76 +1,31 @@
-use std::{sync::{Mutex, RwLock}, borrow::Borrow, time::Duration};
+use std::{sync::RwLock, borrow::Borrow, time::Duration};
 use once_cell::sync::Lazy;
-
+use std::sync::Arc;
 
 //use std::error::Error;
 //use std_semaphore::Semaphore;
 
-use std::sync::Arc;
-pub struct AppInfo{
-    serial_number: String,
-    ups_serial_number: String,
-}
-impl AppInfo{
-    fn default()->Self{
-        AppInfo{
-            serial_number: String::default(),
-            ups_serial_number: "NA".to_string(),
+/// default ups serial number
+pub const UPS_SERIAL_NUMBER: &str = "NA";
+
+static mut CUBE_SERIAL_NUMBER: Lazy<String> = Lazy::new(||String::from("unknown"));
+
+/// representation of cube serial number
+pub struct CubeSerialNumber(Lazy<String>);
+
+impl CubeSerialNumber {
+    pub fn set(serial_num: String){
+        unsafe{
+            *CUBE_SERIAL_NUMBER = serial_num;
         }
     }
-    pub fn set_serial_number(&mut self, serial_number: String){
-        self.serial_number = serial_number
-    }
-    pub fn get_serial_number(&self)->&str{
-        
-        self.serial_number.borrow()
-        
-    }
-}
-
-
-/*
-use std::sync::Arc;
-pub struct Stack{
-    status: Arc<Mutex<Semaphore>>,
-    data: Arc<Mutex<Vec<u8>>>
-}
-impl Stack{
-
-    pub fn new()->Self{
-        Stack{
-            status: Arc::new(Mutex::new(Semaphore::new(0))),
-            data: Arc::new(Mutex::new(Vec::new()))
+    pub fn get()->&'static str{
+        unsafe{
+            CUBE_SERIAL_NUMBER.borrow()
         }
     }
-
-    ///clones current instanse
-    pub fn clone(&self)->Self{
-        Stack{
-            status: Arc::clone(&self.status),
-            data: Arc::clone(&self.data)
-        }
-    }
-
-    /// push the new Insertion instanse into stack and increments the internal count of the semaphore.
-    pub fn push(&mut self, instanse: u8){
-        self.data.lock().unwrap().push(instanse);
-        println!("semaphore release +1");
-        self.status.lock().unwrap().release();
-    }
-
-    /// blocking the current thread until the internal count of the semaphore is at least 1.
-    pub fn pull(&mut self)->Option<u8>{
-        self.status.lock().unwrap().acquire();
-        println!("semaphore gert access -1");
-        self.data.lock().unwrap().pop()
-    }
 }
-*/
 
-
-
-//pub static mut STACK: Lazy<Stack> = Lazy::new(||Stack::new());
-pub static mut APP_INFO: Lazy<Mutex<AppInfo>> = Lazy::new(||Mutex::new(AppInfo::default()));
 
 
 
@@ -151,8 +106,9 @@ const DISCONNECT: u8 = 2;
 
 
 
-//----SERIAL_NUM----
-//const SERIAL_NUMBER: &str = "xxx"; //unknown
+
+
+
 
 //----BATTERY_INFO----
 
@@ -169,7 +125,6 @@ pub const READ_BACKUP_TIME: [u16; 4] =    [0x11, 0x03, 0x1B, 0x01]; //same as RE
 //----UPS_INFO----
 pub const READ_MAX_AUTHONOMY_TIME: [u16; 4] = [0x11, 0x03, 0x20, 0x01];   //-> 0: "UPS1H", 1: "UPS4H" else: "unknown"
 pub const READ_FW_VERSION: [u16; 4] =     [0x01, 0x03, 0x00, 0x01];
-pub const UPS_SERIAL_NUMBER: &str = "NA";
 pub const HOURS_1: &str = "UPS1H";
 pub const HOURS_4: &str = "UPS4H";
 pub const HOURS_NA: &str = "unknown";

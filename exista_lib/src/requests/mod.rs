@@ -3,7 +3,6 @@ use std::fmt::Display;
 use std::{error::Error, ops::DerefMut};
 use std::borrow::{BorrowMut, Borrow};
 use std::ops::Deref;
-
 use json::JsonValue;
 
 use crate::json_patterns::JsonPattern;
@@ -13,6 +12,8 @@ use crate::modbus::{Modbus, msg::ModbusMsg};
 mod ups_info;
 mod battery_info;
 mod battery_event;
+pub mod requests_stack;
+
 use crate::requests::{ups_info::UpsInfo, battery_info::BatteryInfo, battery_event::BatteryEvent};
 
 
@@ -29,20 +30,17 @@ impl Request{
         Self(Box::new(BatteryEvent::new(event)))
     }
 }
-
 impl Deref for Request{
     type Target = Box<dyn RequestObject>;
     fn deref(&self) -> &Self::Target {
         self.0.borrow()
     }
 }
-
 impl DerefMut for Request{
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.0.borrow_mut()
     }
 }
-
 impl Display for Request{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)

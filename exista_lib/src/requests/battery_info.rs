@@ -88,23 +88,18 @@ impl MqttSending for BatteryInfo{
 impl RequestObject for BatteryInfo{
     fn fill_with_data<'a>(&mut self, bus: &'a Modbus)->Result<(), Box<dyn Error + 'a>>{
 
-        let mut parsed_data: Vec<JsonValue> = Vec::new();
+        let serial_number: JsonValue = CubeSerialNumber::get().into();
+        let com_status: JsonValue  = bus.get_status().into();
 
-        unsafe{
-            let binding = APP_INFO.lock()?;
-            let serial_numver = binding.get_serial_number();
-            parsed_data.push(serial_numver.into())
-        }
+        let mut battery_info = Vec::from([serial_number, com_status]);
 
-        let com_status = bus.get_status();
-        parsed_data.push(com_status.into());
 
         let raw_data = self.get_modbus_data(bus)?;
-        
-        parsed_data.extend(self.parse_modbus_data(raw_data));
+        let parsed_data = self.parse_modbus_data(raw_data);
 
-        self.json_mut().fill(parsed_data);
+        battery_info.extend(parsed_data);
 
+        self.json_mut().assign(battery_info);
         Ok(())
     }
 }

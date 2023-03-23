@@ -1,12 +1,11 @@
 
 use crate::modbus::Modbus;
-use crate::modbus::msg::ModbusMsg;
 use crate::mqtt::MqttClient;
-use crate::requests::Request;
+use crate::requests::requests_stack::RequestsStack;
 
 pub mod constants;
 pub mod loger;
-use std::borrow::{BorrowMut};
+use std::borrow::Borrow;
 use std::error::Error;
 
 use crate::application::loger::Log;
@@ -15,54 +14,46 @@ use self::constants::*;
 
 
 pub struct App{
-    modbus: Option<Modbus>,
-    mqtt_client: Option<MqttClient>,
-    channel: Channel<(&'static str, [u8; 16])>
+    modbus: Modbus,
+    mqtt_client: MqttClient,
 }
 impl App{
     fn modbus(&self)->&Modbus{
-        self.modbus.as_ref().unwrap()
+        self.modbus.borrow()
     }
     fn mqtt_client(&self)->&MqttClient{
-        self.mqtt_client.as_ref().unwrap()
+        self.mqtt_client.borrow()
     }
-    fn channels(&mut self)->&mut Channel<(&'static str, [u8; 16])>{
-        self.channel.borrow_mut()
-    }
+
+
 
     /// config modbus and mqtt services.
     pub fn config()->Result<Self, Box<dyn Error>>{
-
-        let mut request_channel: Channel<(&str, [u8; 16])> = Channel::new(3);
-
-        //let mut stack = Stack::new();
-
+        
         let modbus = Modbus::config(PORT, TIMEOUT)?;
         Log::write("Serial port configured.");
 
-        let request_tx = request_channel.get_transmitter().unwrap();
-        let mqtt_client = MqttClient::config(request_tx)?;
+        let mqtt_client = MqttClient::config()?;
 
         Log::write("Mqtt client configured.");
 
         Ok(
             App{
-                modbus: Some(modbus), 
-                mqtt_client: Some(mqtt_client), 
-                channel: request_channel
+                modbus, 
+                mqtt_client
             }
         )
     }
 
     /// run mqtt client and modbus communication.
-    pub fn run(mut app_config: Self)->Result<(), Box<dyn Error>>{
+    pub fn run(app_config: Self)->Result<(), Box<dyn Error>>{
         
         Log::write("running mqtt client...");
         app_config.mqtt_client().run();
 
         Log::write("running modbus...");
-        let event_tx = app_config.channels().get_transmitter()?;
-        let (_heartbeat, _listener) = app_config.modbus().run(event_tx);
+        
+        let (_heartbeat, _listener) = app_config.modbus().run();
 
         Log::write("config is done.\n\n");
         app_config.run_forever()?;
@@ -70,15 +61,8 @@ impl App{
         Ok(())
     }
 
-    fn run_forever(mut self)->Result<(), Box<dyn Error>>{
-        while let Ok(pattern) = self.channels().recv(){
-
-            let mut request = match pattern{
-                (TOPIC_BATTERY_INFO_REQ,_) => Request::battery_info(),
-                (TOPIC_DEVICE_INFO, _) =>     Request::ups_info(),     
-                (TOPIC_EVENT, msg) =>         Request::battery_event(ModbusMsg::from(&msg[..], msg.len())),
-                _ => return Err("unreachable topic".into())
-            };
+    fn run_forever(self)->Result<(), Box<dyn Error>>{
+        while let Ok(mut request) = RequestsStack::pull(){
 
             if let Err(err) = request.fill_with_data(self.modbus()){
                 Log::write(format!("Error while trying to fill pattern with data: {err}").as_str());
@@ -102,6 +86,43 @@ impl App{
     }
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

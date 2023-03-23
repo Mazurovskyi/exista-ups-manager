@@ -4,6 +4,7 @@ use json::JsonValue;
 use paho_mqtt::Message;
 use crate::application::constants::*;
 use crate::modbus::Modbus;
+use crate::requests::requests_stack::RequestsStack;
 use std::error::Error;
 use crate::requests::*;
 use crate::json_patterns::*;
@@ -14,57 +15,39 @@ use chrono::Local;
 use std::sync::Mutex;
 
 pub trait Handler{
-    fn handle(self, stack: Arc<Mutex<Sender<(&str, [u8; 16])>>>)->Result<String, Box<dyn Error + '_>>;
+    fn handle(self)->Result<String, Box<dyn Error>>;
 }
 impl Handler for Option<Message>{
-    fn handle(self, tx: Arc<Mutex<Sender<(&str, [u8; 16])>>>)->Result<String, Box<dyn Error + '_>>{
+    fn handle(self)->Result<String, Box<dyn Error>>{
 
         let msg = self.ok_or_else(|| "Received an empty mqtt message")?;
 
         match msg.topic(){
             TOPIC_BATTERY_INFO_REQ => {
-                //let instanse = BatteryInfo::build()?;
-                    
-                //println!("instanse has created is handle");
-                //println!("instance:\n {}", instanse);
-
                 let report = format!("Received gateway/batteryInfo.req: {}", Local::now().to_rfc3339());
 
-                match tx.lock(){
-                    Ok(guard)=> guard.send((TOPIC_BATTERY_INFO_REQ, [0;16]))?,
-                    Err(err) => return Err(err.to_string().into())
-                };
-                
+                RequestsStack::push(Request::battery_info())?;
                 
                 Ok(report)
             },
             TOPIC_DEVICE_INFO => {
-
                 let report = format!("Received gateway/deviceInfo: {}", Local::now().to_rfc3339());
 
                 let serial_number = msg.get_payload("serialNumber")
                                        .unwrap_or("unknown".to_owned());
 
-                unsafe{APP_INFO.lock()?.set_serial_number(serial_number)};
+                CubeSerialNumber::set(serial_number);
     
-                //let instanse = UpsInfo::build().unwrap();
-
-                //println!("instanse has created is handle");
-                // println!("instance:\n {}", instanse);
-
-                match tx.lock(){
-                    Ok(guard)=> guard.send((TOPIC_DEVICE_INFO, [0;16]))?,
-                    Err(err) => return Err(err.to_string().into())
-                };
-
-                Ok(report)
+                RequestsStack::push(Request::ups_info())?;
+                
+                Ok(report)  
             },
             _=> Ok("Received mqtt message on unexpected topic".to_owned())
         }
     }
 }
 
-trait GetPayload{
+pub trait GetPayload{
     fn get_payload(self, param: &str)->Result<String, Box<dyn Error>>;
 }
 impl GetPayload for Message {

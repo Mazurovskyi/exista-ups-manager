@@ -12,6 +12,8 @@ use std::io::ErrorKind;
 pub mod msg;
 use msg::ModbusMsg;
 use crate::application::loger::Log;
+use crate::requests::Request;
+use crate::requests::requests_stack::RequestsStack;
 
 use std::thread::{self, JoinHandle};
 use chrono::Local;
@@ -84,10 +86,10 @@ impl Modbus{
     }
 
     /// running modbus services: listening the port and running modbus timer.
-    pub fn run(&self, tx: Arc<Mutex<Sender<(&'static str, [u8; 16])>>>)->(JoinHandle<()>, JoinHandle<()>){
+    pub fn run(&self)->(JoinHandle<()>, JoinHandle<()>){
 
         let heartbeat = self.clone().create_heartbet();
-        let listener = self.clone().create_listener(tx);
+        let listener = self.clone().create_listener();
 
         let heartbeat = thread::spawn(heartbeat);
         let listener = thread::spawn(listener);
@@ -157,7 +159,7 @@ impl Modbus{
         }
     }
 
-    fn create_listener(self, tx: Arc<Mutex<Sender<(&'static str, [u8; 16])>>>)->impl FnOnce() + Send + 'static{
+    fn create_listener(self)->impl FnOnce() + Send + 'static{
 
         let mut feedback = [0;16];
 
@@ -169,8 +171,7 @@ impl Modbus{
                         Log::write(
                             format!("received event: {:?}, time: {}", msg.data(), Local::now().to_rfc3339()).as_str());
                             
-                        //tx.lock().unwrap().send((TOPIC_EVENT, msg.data())).unwrap();
-                        tx.lock().unwrap().send((TOPIC_EVENT, feedback)).unwrap();
+                        RequestsStack::push(Request::battery_event(msg));
                     }
                     else{
                         Log::write(format!("received trash: {feedback:?}").as_str());

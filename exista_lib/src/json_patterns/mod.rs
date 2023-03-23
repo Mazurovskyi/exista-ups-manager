@@ -10,8 +10,8 @@ use std::vec::IntoIter;
 /// trait provides method to insert data into Json-object
 pub trait JsonPattern{
     //fn build(topic: &str)->Result<JsonValue, Box<dyn Error>>;
-    fn fill(&mut self, values: Vec<JsonValue>);
-    fn do_fill(&mut self, values: &mut IntoIter<JsonValue>);
+    fn assign(&mut self, values: Vec<JsonValue>);
+    fn fill(&mut self, values: &mut IntoIter<JsonValue>);
 }
 impl JsonPattern for JsonValue{
 
@@ -31,17 +31,17 @@ impl JsonPattern for JsonValue{
     }
     */
 
-    fn fill(&mut self, values: Vec<JsonValue>) {
+    fn assign(&mut self, values: Vec<JsonValue>) {
         let mut values = values.into_iter();
-        self.do_fill(& mut values)
+        self.fill(& mut values)
     }
 
-    fn do_fill(&mut self, values: &mut IntoIter<JsonValue>){
+    fn fill(&mut self, values: &mut IntoIter<JsonValue>){
         
         for (_name, el) in self.entries_mut(){
             
             if el.is_object(){
-               el.do_fill(values);
+               el.fill(values);
             }
             else{
                 let temp = values.next();

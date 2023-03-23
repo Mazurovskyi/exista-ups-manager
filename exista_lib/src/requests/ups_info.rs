@@ -12,6 +12,7 @@ use super::*;
 pub struct UpsInfo{
     json: JsonValue,
     modbus_requests: Vec<ModbusMsg>,
+    ups_serial_number: String,
     publish_topic: &'static str,
     qos: i32
 }
@@ -20,6 +21,7 @@ impl UpsInfo{
         Self { 
             json: Self::build_json(), 
             modbus_requests: Self::build_request_list(),
+            ups_serial_number: String::from(UPS_SERIAL_NUMBER),
             publish_topic: TOPIC_UPS_INFO,
             qos: 0
         }
@@ -39,6 +41,9 @@ impl UpsInfo{
             .iter()
             .map(|msg|ModbusMsg::from(&msg[..], msg.len()))
             .collect()
+    }
+    fn ups_serial_number(&self)->&str{
+        self.ups_serial_number.borrow()
     }
     
 
@@ -91,9 +96,9 @@ impl RequestObject for UpsInfo{
         let raw_data = self.get_modbus_data(bus)?;
         let mut parsed_data = self.parse_modbus_data(raw_data);
 
-        parsed_data.push(UPS_SERIAL_NUMBER.into());
+        parsed_data.push(self.ups_serial_number().into());
 
-        self.json_mut().fill(parsed_data);
+        self.json_mut().assign(parsed_data);
 
         Ok(())
     }

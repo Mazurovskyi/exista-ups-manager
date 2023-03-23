@@ -82,25 +82,23 @@ impl MqttSending for BatteryEvent{
 impl RequestObject for BatteryEvent{
     fn fill_with_data<'a>(&mut self, _bus: &'a Modbus)->Result<(), Box<dyn Error + 'a>>{
 
-        let mut parsed_data: Vec<JsonValue> = Vec::new();
+        let serial_number: JsonValue = CubeSerialNumber::get().into();
+        let event_time: JsonValue = Local::now().to_rfc3339().into();
 
-        unsafe{
-            let binding = APP_INFO.lock()?;
-            let serial_numver: JsonValue = binding.get_serial_number().into();
-            parsed_data.push(serial_numver.into());
-        }
+        let battery_event: JsonValue = self.decode(self.event())
+            .ok_or("event should be skipped.")?.into();
+
+        let ac_battery_switch_counter: JsonValue = 0.into();
+        let battery_missing_counter: JsonValue = 0.into();
+
+        let battery_event = Vec::from(
+            [serial_number,
+            event_time,
+            battery_event,
+            battery_missing_counter, 
+            ac_battery_switch_counter]);
         
-        let date_time: JsonValue = Local::now().to_rfc3339().into();
-
-        let battery_event: JsonValue = self.decode(self.event()).into();
-
-        let ac_battery_switch_counter = 0;
-        let battery_missing_counter = 0;
-
-        parsed_data.extend_from_slice(&[date_time, battery_event, battery_missing_counter.into(), ac_battery_switch_counter.into()]);
-        
-        self.json_mut().fill(parsed_data);
-
+        self.json_mut().assign(battery_event);
         Ok(())
     }
 }

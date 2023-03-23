@@ -16,7 +16,7 @@ use crate::application::loger::Log;
 
 use crate::requests::Request;
 use crate::mqtt::msg::Handler;
-mod msg;
+pub mod msg;
 
 
 
@@ -27,7 +27,7 @@ pub struct MqttClient{
 }
 impl MqttClient{
     
-    pub fn config(tx: Arc<Mutex<Sender<(&'static str, [u8; 16])>>>)-> Result<MqttClient, Box<dyn Error>>{
+    pub fn config()-> Result<MqttClient, Box<dyn Error>>{
 
         // client creation options
         let creation_options = paho_mqtt::CreateOptionsBuilder::new();
@@ -57,9 +57,8 @@ impl MqttClient{
         
         // callback on incoming messages.
         client.set_message_callback(move |_client, msg: Option<Message>| {
-            let result = msg.handle(tx.clone())
-                            .unwrap_or_else(|err| err.to_string());
 
+            let result = msg.handle().unwrap_or_else(|err| err.to_string());
             Log::write(format!("mqtt message handle result: {result}").as_str());
         });
         
