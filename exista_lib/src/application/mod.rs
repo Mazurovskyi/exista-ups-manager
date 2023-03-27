@@ -5,7 +5,7 @@ use crate::requests::requests_stack::RequestsStack;
 
 pub mod constants;
 pub mod loger;
-use std::borrow::Borrow;
+use std::borrow::{Borrow, BorrowMut};
 use std::error::Error;
 
 use crate::application::loger::Log;
@@ -18,24 +18,13 @@ pub struct App{
     mqtt_client: MqttClient,
 }
 impl App{
-    fn modbus(&self)->&Modbus{
-        self.modbus.borrow()
-    }
-    fn mqtt_client(&self)->&MqttClient{
-        self.mqtt_client.borrow()
-    }
-
     /// config modbus and mqtt services.
     pub fn config()->Result<Self, Box<dyn Error>>{
 
-        //let heartbeat = 
-        //let listner = 
-
         let modbus = Modbus::config(PORT, TIMEOUT)?;
-        Log::write("Serial port configured.");
 
-        let mqtt_client = MqttClient::config()?;
-        Log::write("Mqtt client configured.");
+        let callbacks = MqttClient::callbacks();
+        let mqtt_client = MqttClient::config(callbacks)?;
 
         Ok(
             App{
@@ -46,15 +35,14 @@ impl App{
     }
 
     /// run mqtt client and modbus communication.
-    pub fn run(app_config: Self)->Result<(), Box<dyn Error>>{
-        
-        Log::write("running mqtt client...");
-        app_config.mqtt_client().run();
+    pub fn run(mut self)->Result<(), Box<dyn Error>>{
 
-        Log::write("running modbus...");
-        let _modbus_serv = app_config.modbus().run();
+        self.mqtt_client_mut().run();
 
-        app_config.run_forever()
+        let services = Modbus::services(self.modbus());
+        let _modbus_services = self.modbus().run(services);
+
+        self.run_forever()
     }
 
     fn run_forever(self)->Result<(), Box<dyn Error>>{
@@ -64,8 +52,8 @@ impl App{
             // block current thread until data in stack become avalliable:
             let mut request = RequestsStack::pull()?;
 
-            if let Err(err) = request.fill_with_data(self.modbus()){
-                Log::write(format!("Error while trying to fill Json pattern with data: {err}").as_str());
+            if let Err(err) = request.insert_data(self.modbus()){
+                Log::write(format!("Error while trying to insert data into Request: {err}").as_str());
                 continue;
             }
             
@@ -79,6 +67,16 @@ impl App{
                 Log::write(format!("Successfully delivered! {}", Local::now().to_rfc3339()).as_str());
             }
         }
+    }
+
+    fn modbus(&self)->&Modbus{
+        self.modbus.borrow()
+    }
+    fn mqtt_client(&self)->&MqttClient{
+        self.mqtt_client.borrow()
+    }
+    fn mqtt_client_mut(&mut self)->&mut MqttClient{
+        self.mqtt_client.borrow_mut()
     }
 }
 

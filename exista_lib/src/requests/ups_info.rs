@@ -91,7 +91,7 @@ impl MqttSending for UpsInfo{
 }
 
 impl RequestObject for UpsInfo{
-    fn fill_with_data<'a>(&mut self, bus: &'a Modbus)->Result<(), Box<dyn Error + 'a>>{
+    fn insert_data<'a>(&mut self, bus: &'a Modbus)->Result<(), Box<dyn Error + 'a>>{
 
         let raw_data = self.get_modbus_data(bus)?;
         let mut parsed_data = self.parse_modbus_data(raw_data);

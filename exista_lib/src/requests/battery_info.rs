@@ -46,7 +46,7 @@ impl BatteryInfo{
 
 
     // decoding operations 
-    fn decode(msg: ModbusMsg, i: usize)->JsonValue{
+    fn decode(msg: ModbusMsg, i: usize)->Option<JsonValue>{
         if i == 4 || i == 5 {
             ModbusMsg::registers_value_percent(msg.data())
         }
@@ -87,11 +87,10 @@ impl MqttSending for BatteryInfo{
 }
 
 impl RequestObject for BatteryInfo{
-    fn fill_with_data<'a>(&mut self, bus: &'a Modbus)->Result<(), Box<dyn Error + 'a>>{
+    fn insert_data<'a>(&mut self, bus: &'a Modbus)->Result<(), Box<dyn Error + 'a>>{
 
         let serial_number: JsonValue = CubeSerialNumber::get().into();
         let com_status: JsonValue  = bus.get_status().into();
-
         let mut battery_info = Vec::from([serial_number, com_status]);
 
 
@@ -116,7 +115,7 @@ impl ModbusData for BatteryInfo{
         Ok(modbus_replies)
     }
     fn parse_modbus_data(&self, raw_data: Vec<ModbusMsg>)->Vec<JsonValue>{
-        raw_data.into_iter().enumerate().map(|(i, msg)|Self::decode(msg, i)).collect()
+        raw_data.into_iter().enumerate().map(|(i, msg)|Self::decode(msg, i).into()).collect()
     }
 }
 
@@ -125,3 +124,4 @@ impl Display for BatteryInfo{
         write!(f, "(BatteryInfo:,\n{})", self.json().pretty(4))
     }
 }
+

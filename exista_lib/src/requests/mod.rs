@@ -50,7 +50,9 @@ impl Display for Request{
 
 
 pub trait RequestObject : MqttSending + Display{
-    fn fill_with_data<'a>(&mut self, bus: &'a Modbus)->Result<(), Box<dyn Error + 'a>>;
+    /// inserts data into Request object. 
+    /// Returns Err() if something wrong with Modbus connection or event should be skipped.
+    fn insert_data<'a>(&mut self, bus: &'a Modbus)->Result<(), Box<dyn Error + 'a>>;
 }
 
 
@@ -67,6 +69,8 @@ pub trait MqttSending{
 /// describes how to ask and parse data over Modbus.
 trait ModbusData : RequestObject{
     fn get_modbus_data<'a>(&self, bus: &'a Modbus)->Result<Vec<ModbusMsg>, Box<dyn Error + 'a>>;
+
+    /// returns "none", if ModbusMsg cannot be decoded. 
     fn parse_modbus_data(&self, raw_data: Vec<ModbusMsg>)->Vec<JsonValue>;
 }
 

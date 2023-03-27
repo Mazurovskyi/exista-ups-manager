@@ -1,33 +1,25 @@
-extern crate serial;
 use std::borrow::{BorrowMut, Borrow};
 use std::error::Error;
-use std::io::{Write, Read};
-use std::ops::{Deref, DerefMut};
-
-use serial:: {SystemPort, prelude::SerialPort};
 use std::time::Duration;
-
+use std::io::{self, Write, Read, ErrorKind};
+use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex, MutexGuard};
-use std::io::ErrorKind;
+use std::thread::{self, JoinHandle};
+
+extern crate serial;
+use serial:: {SystemPort, prelude::SerialPort};
+
+use crate::application::loger::Log;
+
 mod com_status;
 pub mod msg;
 pub mod services;
-use services as callback;
 
 use com_status::ComStatus;
 use msg::ModbusMsg;
-use crate::application::loger::Log;
-use crate::requests::Request;
-use crate::requests::requests_stack::RequestsStack;
 
-use std::thread::{self, JoinHandle};
-use chrono::Local;
-use crate::application::constants::*;
+use self::services::Service;
 
-
-use std::{io, process};
-
-use self::callback::services;
 
 
 
@@ -65,7 +57,6 @@ impl ModbusPort{
 }
 
 impl Deref for ModbusPort{
-
     type Target = Arc<Mutex<SystemPort>>;
 
     fn deref(&self) -> &Self::Target {
@@ -80,20 +71,26 @@ pub struct Modbus{
     status: ComStatus
 }
 impl Modbus{
+
+    /// creates a new Modbus service list: heartbeat and listener
+    pub fn services(&self)->Vec<Service>{
+        Service::new_list(self)
+    }
+
     /// creates and configure the Modbus port.
     pub fn config(port: &str, timeout: u64)->Result<Self, Box<dyn Error>>{
-
         let bus = Modbus{
             port: ModbusPort::open(port)?.config()?.timeout(timeout)?,
             status: ComStatus::default()
         };
 
-       Ok(bus)
+        Log::write("Modbus configured.");
+        Ok(bus)
     }
 
     /// running modbus services.
-    pub fn run(&self)->Vec<JoinHandle<()>>{
-        let services = services(&self);
+    pub fn run(&self, services: Vec<Service>)->Vec<JoinHandle<()>>{
+        Log::write("running modbus...");
         services.into_iter().map(thread::spawn).collect()
     }
 
@@ -136,56 +133,7 @@ impl Modbus{
 
     // private API
 
-    fn create_heartbeat(mut self)->impl FnOnce() + Send + 'static{
-
-        let heartbeat_msg = ModbusMsg::from(&HEARTBEAT[..], HEARTBEAT.len());
-
-        move || {
-            loop{
-                Log::write("sending heartbeat...");
-
-                if self.send(&heartbeat_msg).is_ok(){
-                    Log::write("heartbeat reply received. com status: connect.");
-                    self.set_connect()
-                }
-                else{
-                    Log::write("no heartbeat reply. com status: disconect.");
-                    self.set_disconnect()
-                }
-
-                thread::sleep(Duration::from_secs(HEARTBEAT_FREQ))
-            }
-        }
-    }
-
-    fn create_listener(self)->impl FnOnce() + Send + 'static{
-
-        let mut feedback = [0;16];
-
-        move || {
-            loop{
-                if let Ok(msg) = self.read_once(&mut feedback){
-
-                    if msg.is_event(){
-                        Log::write(
-                            format!("received event: {:?}, time: {}", msg.data(), Local::now().to_rfc3339()).as_str());
-                            
-                        RequestsStack::push(Request::battery_event(msg))
-                            .unwrap_or_else(|err|{
-                                Log::write(format!("can`t write event into stack! {err}").as_str());
-                                process::exit(1);
-                            });
-                    }
-                    else{
-                        Log::write(format!("received trash: {feedback:?}").as_str());
-                    }
-                }
-            }
-        }
-    }
-
     fn sending(port_guard: &mut MutexGuard<SystemPort>, data: &[u8])->Result<(), io::Error>{
-
         loop{
             if port_guard.write(data).is_err_and(|err|err.kind() == ErrorKind::Interrupted){
                 continue;
@@ -195,9 +143,7 @@ impl Modbus{
     }
     
     fn reading(port_guard: &mut MutexGuard<SystemPort>)->Result<ModbusMsg, io::Error>{
-
         let mut feedback = [0; 8];
- 
         loop{
             match port_guard.read(&mut feedback){
                 Ok(bytes_count)=> return Ok(ModbusMsg::from(&feedback[..], bytes_count)),

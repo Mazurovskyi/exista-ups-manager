@@ -1,4 +1,4 @@
-use std::borrow::Borrow;
+use std::borrow::{Borrow, BorrowMut};
 use std::time::Duration;
 use std::error::Error;
 
@@ -7,19 +7,26 @@ use paho_mqtt::{AsyncClient,ConnectOptions};
 use crate::application::constants::*;
 use crate::requests::Request;
 
-pub mod callbacks;
-use callbacks as callback;
+pub mod callback;
+use callback::Callbacks;
+
 
 
 
 ///provides an AsyncClient representation with it`s own connect options.
 pub struct MqttClient{
     client: AsyncClient,
-    connect_options: Option<ConnectOptions>
+    connect_options: Option<ConnectOptions>,
+    callbacks: Callbacks,
 }
 impl MqttClient{
+
+    /// returns Mqtt callbacks to configure and running Mqtt client
+    pub fn callbacks()->Callbacks{
+        Callbacks::new()
+    }
     
-    pub fn config()-> Result<MqttClient, Box<dyn Error>>{
+    pub fn config(mut callback: Callbacks)-> Result<MqttClient, Box<dyn Error>>{
 
         // client creation options
         let creation_options = paho_mqtt::CreateOptionsBuilder::new();
@@ -33,9 +40,9 @@ impl MqttClient{
         // Create the new MQTT client based on creation options
         let client = AsyncClient::new(creation_options)?;
 
-        client.set_connected_callback(callback::set_connected);
-        client.set_connection_lost_callback(callback::set_connection_lost);
-        client.set_message_callback(callback::message_callback);
+        client.set_connected_callback(callback.connected());
+        client.set_connection_lost_callback(callback.connection_lost());
+        client.set_message_callback(callback.message_callback());
         
         // client connection options. MQTT v3.x connection.
         let mut conn_opts = paho_mqtt::ConnectOptionsBuilder::new();
@@ -45,14 +52,18 @@ impl MqttClient{
         .finalize();
         //.will_message(lwt);
 
-        Ok(Self::from(client, conn_opts))
+        Ok(Self::from(client, conn_opts, callback))
     }
 
-    pub fn run(&self){
+    pub fn run(&mut self){
+
+        let on_connect_success = self.callback().on_connect_success();
+        let on_connect_failure = self.callback().on_connect_failure();
+
         self.client().connect_with_callbacks(
             self.options(), 
-            callback::on_connect_success, 
-            callback::on_connect_failure);
+            on_connect_success, 
+            on_connect_failure);
     }
 
     pub fn publish(&self, request: Request, timeout: Duration)->Result<(), paho_mqtt::Error>{
@@ -75,8 +86,15 @@ impl MqttClient{
        self.connect_options.clone().unwrap()
     }
     
-    fn from(client: AsyncClient, connect_options: ConnectOptions)->Self{
-        MqttClient { client, connect_options: Some(connect_options)}
+    fn from(client: AsyncClient, connect_options: ConnectOptions, callbacks: Callbacks)->Self{
+        Self { 
+            client, 
+            connect_options: Some(connect_options), 
+            callbacks
+        }
+    }
+    fn callback(&mut self)->&mut Callbacks{
+        self.callbacks.borrow_mut()
     }
 }
 

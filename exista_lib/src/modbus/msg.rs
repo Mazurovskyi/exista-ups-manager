@@ -1,3 +1,5 @@
+use std::borrow::Borrow;
+
 use json::JsonValue;
 pub struct ModbusMsg{
     msg: Vec<u8>,
@@ -14,23 +16,23 @@ impl ModbusMsg{
     }
     
     pub fn _len(&self)->&usize{
-        &self.len
+        self.len.borrow()
     }
 
-    pub fn registers_value(msg: &[u8])->JsonValue{
-        let temp = ((msg[3] as u32) << 8) + (msg[4] as u32);
-        (temp as i32).into()
+    pub fn registers_value(msg: &[u8])->Option<JsonValue>{
+        let temp = ((*msg.get(3)? as u32) << 8) + (*msg.get(4)? as u32);
+        Some((temp as i32).into())
     }
 
-    pub fn registers_value_percent(msg: &[u8])->JsonValue{
-        let mut temp = ((msg[3] as u32) << 8) + (msg[4] as u32);
+    pub fn registers_value_percent(msg: &[u8])->Option<JsonValue>{
+        let mut temp = ((*msg.get(3)? as u32) << 8) + (*msg.get(4)? as u32);
         temp = (temp * 100) / 0xFFFF;
-        (temp as i32).into()
+        Some((temp as i32).into())
     }
 
     pub fn is_event(&self)->bool{
         // event message begins with 0x0, 0x64.
-        if self.data()[..2] == [0x00, 0x64]{
+        if self.data().get(..2).is_some_and(|res| res == [0x00, 0x64]){
             true
         }
         else{

@@ -9,8 +9,6 @@ use crate::application::constants::*;
 use crate::application::constants::cube_serial_num::CubeSerialNumber;
 use crate::requests::ModbusMsg;
 
-use crate::application::loger::Log;
-
 mod map;
 use map::Map;
 
@@ -47,16 +45,15 @@ impl BatteryEvent{
     }
 
     // decoding operations
-    fn decode(&self, event: &ModbusMsg)->Option<i32>{
+    fn decode(&self, _event: &ModbusMsg)->Result<i32, String>{
 
-        let event_code = self.code()?;
+        let event_code = self.code().ok_or(format!("Event message is incomplete!"))?;
 
         match event_code.map(){
             DONT_FORWARD => {
-                Log::write(format!("Event should be skipped. Code: {event_code}").as_str());
-                None
+                Err(format!("Event should be skipped. Code: {event_code}"))
             },
-            value => Some(value)
+            value => Ok(value)
         }
     }
 }
@@ -86,14 +83,14 @@ impl MqttSending for BatteryEvent{
 }
 
 impl RequestObject for BatteryEvent{
-    fn fill_with_data<'a>(&mut self, _bus: &'a Modbus)->Result<(), Box<dyn Error + 'a>>{
+    fn insert_data<'a>(&mut self, _bus: &'a Modbus)->Result<(), Box<dyn Error + 'a>>{
 
         let serial_number: JsonValue = CubeSerialNumber::get().into();
         let event_time: JsonValue = Local::now().to_rfc3339().into();
 
-        let battery_event: JsonValue = self.decode(self.event())
-            .ok_or("event should be skipped.")?.into();
+        let battery_event: JsonValue = self.decode(self.event())?.into();
 
+        // should be "0" 
         let ac_battery_switch_counter: JsonValue = 0.into();
         let battery_missing_counter: JsonValue = 0.into();
 

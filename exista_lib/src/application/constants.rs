@@ -96,6 +96,5 @@ pub const BATT_IC_OVER_TEMPERATURE: u16 = 0x2300;  // over temperature fault
 pub const BATT_IC_LOW_TEMPERATURE: u16 = 0x2400;  // low temperature fault
 pub const BATT_IC_EQUAGL_CHARG_TOOLONG: u16 = 0x2500;  // aver. charging too long
 pub const BATT_IC_DEFECT_DISCHARG_OVER_CURR: u16 = 0x2600;  // over current discharging fail
-
 pub const DONT_FORWARD: i32 = 10;
 

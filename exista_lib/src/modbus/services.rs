@@ -1,5 +1,3 @@
-use std::borrow::Borrow;
-use std::ops::Deref;
 use std::{thread, process, time::Duration};
 
 use chrono::Local;
@@ -8,25 +6,29 @@ use super::{Modbus, ModbusMsg};
 use crate::application::{loger::Log, constants::*};
 use crate::requests::{Request, requests_stack::RequestsStack};
 
-/// returns heartbeat and permanent listening services
-pub fn services(bus: &Modbus)->Vec<ModbusService>{
-    let heartbeat = ModbusService::new(heartbeat(bus.clone()));
-    let listener = ModbusService::new(listener(bus.clone()));
-    Vec::from([heartbeat, listener])
-}
 
-pub struct ModbusService(Box<dyn FnOnce() + Send + 'static>);
-impl ModbusService{
+
+/// representation of Modbus service: heartbeat or listener
+pub struct Service(Box<dyn FnOnce() + Send + 'static>);
+impl Service{
+    pub fn new_list(bus: &Modbus)->Vec<Self>{
+        let heartbeat = Service::new(heartbeat(bus.clone()));
+        let listener = Service::new(listener(bus.clone()));
+        Vec::from([heartbeat, listener])
+    }
+
     fn new(closure: impl FnOnce() + Send + 'static)->Self{
         Self(Box::new(closure))
     }
 }
-impl FnOnce<()> for ModbusService{
+impl FnOnce<()> for Service{
     type Output = ();
     extern "rust-call" fn call_once(self, _args: ()) -> Self::Output {
         self.0()
     }
 }
+
+
 
 /// heartbeat service
 fn heartbeat(mut bus: Modbus)->impl FnOnce() + Send + 'static{
@@ -45,7 +47,6 @@ fn heartbeat(mut bus: Modbus)->impl FnOnce() + Send + 'static{
                 Log::write("no heartbeat reply. com status: disconect.");
                 bus.set_disconnect()
             }
-
             thread::sleep(Duration::from_secs(HEARTBEAT_FREQ))
         }
     }
