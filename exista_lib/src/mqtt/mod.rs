@@ -66,17 +66,15 @@ impl MqttClient{
             on_connect_failure);
     }
 
-    pub fn publish(&self, request: Request, timeout: Duration)->Result<(), paho_mqtt::Error>{
+    pub fn publish(&self, request: &Request, timeout: Duration, topic: &str)->Result<(), paho_mqtt::Error>{
 
         let msg = paho_mqtt::MessageBuilder::new()
-                .topic(request.topic())
+                .topic(topic)
                 .payload(request.serialize())
                 .qos(request.qos())
                 .finalize();
 
-        let token = self.client().publish(msg);
-
-        token.wait_for(timeout)
+        self.client().publish(msg).wait_for(timeout)
     }
 
     pub fn client(&self)->&AsyncClient{

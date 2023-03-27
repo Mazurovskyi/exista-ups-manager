@@ -56,11 +56,19 @@ impl App{
             let time = Local::now().to_rfc3339();
             Log::write(format!("\nJson pattern is ready: {time}\n{}", request).as_str());
             
-            if let Err(err) = self.mqtt_client().publish(request, DELIVERY_TIME){
-                Log::write(format!("Delivery time out. Message has not delivered. {err}").as_str());
-            }
-            else {
-                Log::write(format!("Successfully delivered! {}", Local::now().to_rfc3339()).as_str());
+
+            let result = self.mqtt_client().publish(&request, DELIVERY_TIME, request.topic()).and(
+                if request.bat_ic_low(){
+                    self.mqtt_client().publish(&request, DELIVERY_TIME, TOPIC_RESET)
+                }
+                else{
+                    Ok(())
+                }
+            );
+
+            match result{
+                Ok(_) => Log::write(format!("Successfully delivered! {}", Local::now().to_rfc3339()).as_str()),
+                Err(err) => Log::write(format!("Delivery time out. Message has not delivered. {err}").as_str())
             }
         }
     }
@@ -82,57 +90,7 @@ impl App{
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-use std::sync::{Arc, Mutex, mpsc};
-use mpsc::{Sender, Receiver};
-use std::sync::mpsc::RecvError;
-
-
+/*
 
 pub struct Channel<T: Send>{
     transmitters: Vec<Arc<Mutex<Sender<T>>>>,
@@ -170,3 +128,17 @@ impl <T: Send> Channel<T>{
         self.receiver.recv()
     }
 }
+
+*/
+
+
+
+
+
+
+
+
+
+
+
+

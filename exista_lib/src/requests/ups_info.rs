@@ -88,6 +88,9 @@ impl MqttSending for UpsInfo{
     fn qos(&self)->i32{
         self.qos
     }
+    fn bat_ic_low(&self)->bool{
+        false
+    }
 }
 
 impl RequestObject for UpsInfo{

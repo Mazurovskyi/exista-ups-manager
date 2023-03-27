@@ -28,7 +28,7 @@ pub const TOPIC_BATTERY_INFO_REP: &str = "gateway/batteryInfo.rep";
 pub const TOPIC_DEVICE_INFO: &str = "gateway/deviceInfo";   // recive
 pub const TOPIC_UPS_INFO: &str = "gateway/upsInfo";         // reply
 pub const TOPIC_EVENT: &str = "gateway/event/battery";
-
+pub const TOPIC_RESET: &str = "gateway/event/reset";
 
 
 //-----------------------MODBUS_CONSTANTS-----------------------
@@ -81,7 +81,7 @@ pub const BATT_IC_OK: u16 = 0x1400;  //Battery normal
 pub const BATT_IC_SUPPLY_BYDC: u16 = 0x1500;  //supply from DC
 pub const BATT_IC_SUPPLY_BYBATT: u16 = 0x1600;  //supply from battery
 pub const BATT_IC_CHARGING: u16 = 0x1700;  //charging
-pub const BATT_IC_LOW: u16 = 0x1800;  //battery capacity low
+pub const BATT_IC_LOW: u16 = 0x1800;  //battery capacity low    PUBLISH TO gateway/event/reset also
 pub const BATT_IC_DISCHARGED: u16 = 0x1900; // battery discharged
 pub const BATT_IC_MISSING: u16 = 0x1A01;  //battery missing dummy message
 pub const BATT_IC_DEFECT: u16 = 0x1B00;  //battery is defect

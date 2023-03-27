@@ -62,6 +62,7 @@ pub trait MqttSending{
     fn serialize(&self)->String;
     fn topic(&self)->&str;
     fn qos(&self)->i32;
+    fn bat_ic_low(&self)->bool;
 }
 
 

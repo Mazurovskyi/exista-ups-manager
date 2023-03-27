@@ -84,6 +84,9 @@ impl MqttSending for BatteryInfo{
     fn qos(&self)->i32{
         self.qos
     }
+    fn bat_ic_low(&self)->bool{
+        false
+    }
 }
 
 impl RequestObject for BatteryInfo{

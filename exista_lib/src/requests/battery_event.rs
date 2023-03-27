@@ -80,6 +80,14 @@ impl MqttSending for BatteryEvent{
     fn qos(&self)->i32{
         self.qos
     }
+    fn bat_ic_low(&self)->bool{
+        if self.code() == Some(BATT_IC_LOW) {
+            true
+        }
+        else{
+            false
+        }
+    }
 }
 
 impl RequestObject for BatteryEvent{
