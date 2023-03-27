@@ -53,17 +53,26 @@ pub trait RequestObject : MqttSending + Display{
     fn fill_with_data<'a>(&mut self, bus: &'a Modbus)->Result<(), Box<dyn Error + 'a>>;
 }
 
+
+
+/// describes methods to send Request over MQTT topic
 pub trait MqttSending{
     fn serialize(&self)->String;
     fn topic(&self)->&str;
     fn qos(&self)->i32;
 }
 
+
+
+/// describes how to ask and parse data over Modbus.
 trait ModbusData : RequestObject{
     fn get_modbus_data<'a>(&self, bus: &'a Modbus)->Result<Vec<ModbusMsg>, Box<dyn Error + 'a>>;
     fn parse_modbus_data(&self, raw_data: Vec<ModbusMsg>)->Vec<JsonValue>;
 }
 
+
+
+/// describes how to create Json object for each Request
 trait JsonCreation : RequestObject{
     fn build_json()->JsonValue;
 }

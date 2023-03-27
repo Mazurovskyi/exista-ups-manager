@@ -1,22 +1,14 @@
-
 use std::borrow::Borrow;
-
-use {paho_mqtt, paho_mqtt::Message};
-
-
-use std::sync::{Arc, Mutex, mpsc::Sender};
-use std::{thread, time::Duration};
+use std::time::Duration;
 use std::error::Error;
 
 use paho_mqtt::{AsyncClient,ConnectOptions};
 
 use crate::application::constants::*;
-use crate::application::loger::Log;
-
-
 use crate::requests::Request;
-use crate::mqtt::msg::Handler;
-pub mod msg;
+
+pub mod callbacks;
+use callbacks as callback;
 
 
 
@@ -34,35 +26,17 @@ impl MqttClient{
 
         let creation_options = creation_options.server_uri(HOST)
             .client_id(CLIENT_ID)
-            .user_data(Box::new(SUBSCRIBE_TOPICS))
+            .user_data(Box::new([TOPIC_BATTERY_INFO_REQ, TOPIC_DEVICE_INFO]))
             .mqtt_version(MQTT_VERSION)
             .finalize();
-
 
         // Create the new MQTT client based on creation options
         let client = AsyncClient::new(creation_options)?;
 
-        // closure to be called when connection is established.
-        client.set_connected_callback(|_cli: &AsyncClient| {
-            Log::write("connected to mqtt broker")
-        });
-
-        // closure to be called if the client loses the connection. Try to reconect
-        client.set_connection_lost_callback(|client: &AsyncClient| {
-            Log::write("mqtt broker connection lost. Trying to reconnect...");
-            thread::sleep(Duration::from_millis(1000));
-            client.reconnect_with_callbacks(Self::on_connect_success, Self::on_connect_failure);
-        });
-
+        client.set_connected_callback(callback::set_connected);
+        client.set_connection_lost_callback(callback::set_connection_lost);
+        client.set_message_callback(callback::message_callback);
         
-        // callback on incoming messages.
-        client.set_message_callback(move |_client, msg: Option<Message>| {
-
-            let result = msg.handle().unwrap_or_else(|err| err.to_string());
-            Log::write(format!("mqtt message handle result: {result}").as_str());
-        });
-        
-
         // client connection options. MQTT v3.x connection.
         let mut conn_opts = paho_mqtt::ConnectOptionsBuilder::new();
         
@@ -74,25 +48,14 @@ impl MqttClient{
         Ok(Self::from(client, conn_opts))
     }
 
-    /// connect client to the mqtt broker.
     pub fn run(&self){
         self.client().connect_with_callbacks(
             self.options(), 
-            Self::on_connect_success, 
-            Self::on_connect_failure);
+            callback::on_connect_success, 
+            callback::on_connect_failure);
     }
 
-    pub fn client(&self)->&AsyncClient{
-        self.client.borrow()
-    }
-    pub fn options(&self)->ConnectOptions{
-       self.connect_options.clone().unwrap()
-    }
-    fn from(client: AsyncClient, connect_options: ConnectOptions)->Self{
-        MqttClient { client, connect_options: Some(connect_options)}
-    }
-
-    pub fn publish(&self, request: &Request, timeout: Duration)->Result<(), paho_mqtt::Error>{
+    pub fn publish(&self, request: Request, timeout: Duration)->Result<(), paho_mqtt::Error>{
 
         let msg = paho_mqtt::MessageBuilder::new()
                 .topic(request.topic())
@@ -105,25 +68,16 @@ impl MqttClient{
         token.wait_for(timeout)
     }
 
-    // Callback for a successful connection to the broker. Subscribe the topics
-    fn on_connect_success(client: &AsyncClient, _msgid: u16){
-        client.subscribe_many(&SUBSCRIBE_TOPICS, QOS);
-
-        Log::write(
-            format!("successful connection to the broker.
-            subscribed to topics: {:?}", SUBSCRIBE_TOPICS).as_str());
+    pub fn client(&self)->&AsyncClient{
+        self.client.borrow()
     }
-
-    // Callback for a fail connection
-    fn on_connect_failure(client: &AsyncClient, _msgid: u16, rc: i32){
-        Log::write(
-            format!("Connection attempt failed with error code {}.
-            trying to reconnect...", rc).as_str());
-            
-        thread::sleep(Duration::from_millis(1000));
-        client.reconnect_with_callbacks(Self::on_connect_success, Self::on_connect_failure);
+    pub fn options(&self)->ConnectOptions{
+       self.connect_options.clone().unwrap()
     }
-
+    
+    fn from(client: AsyncClient, connect_options: ConnectOptions)->Self{
+        MqttClient { client, connect_options: Some(connect_options)}
+    }
 }
 
 

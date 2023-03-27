@@ -4,6 +4,7 @@ use std::fmt::Display;
 
 use json::JsonValue;
 
+use crate::application::constants::cube_serial_num::CubeSerialNumber;
 use crate::requests::ModbusMsg;
 use crate::application::constants::*;
 

@@ -25,16 +25,16 @@ impl App{
         self.mqtt_client.borrow()
     }
 
-
-
     /// config modbus and mqtt services.
     pub fn config()->Result<Self, Box<dyn Error>>{
-        
+
+        //let heartbeat = 
+        //let listner = 
+
         let modbus = Modbus::config(PORT, TIMEOUT)?;
         Log::write("Serial port configured.");
 
         let mqtt_client = MqttClient::config()?;
-
         Log::write("Mqtt client configured.");
 
         Ok(
@@ -52,39 +52,34 @@ impl App{
         app_config.mqtt_client().run();
 
         Log::write("running modbus...");
-        
-        let (_heartbeat, _listener) = app_config.modbus().run();
+        let _modbus_serv = app_config.modbus().run();
 
-        Log::write("config is done.\n\n");
-        app_config.run_forever()?;
-
-        Ok(())
+        app_config.run_forever()
     }
 
     fn run_forever(self)->Result<(), Box<dyn Error>>{
-        while let Ok(mut request) = RequestsStack::pull(){
+        
+        loop{
+
+            // block current thread until data in stack become avalliable:
+            let mut request = RequestsStack::pull()?;
 
             if let Err(err) = request.fill_with_data(self.modbus()){
-                Log::write(format!("Error while trying to fill pattern with data: {err}").as_str());
+                Log::write(format!("Error while trying to fill Json pattern with data: {err}").as_str());
                 continue;
             }
             
             let time = Local::now().to_rfc3339();
             Log::write(format!("\nJson pattern is ready: {time}\n{}", request).as_str());
             
-            if let Err(err) = self.mqtt_client().publish(&request, DELIVERY_TIME){
+            if let Err(err) = self.mqtt_client().publish(request, DELIVERY_TIME){
                 Log::write(format!("Delivery time out. Message has not delivered. {err}").as_str());
             }
             else {
                 Log::write(format!("Successfully delivered! {}", Local::now().to_rfc3339()).as_str());
             }
         }
-
-        Err("channel shut down because all of corresponding senders had disconnected, 
-        or it disconnected while this call is blocking".into())
-
     }
-
 }
 
 

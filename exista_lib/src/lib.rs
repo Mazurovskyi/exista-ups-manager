@@ -1,5 +1,7 @@
 #![feature(file_create_new)]
 #![feature(is_some_and)]
+#![feature(unboxed_closures)]
+#![feature(fn_traits)]
 
 #[macro_use]
 extern crate json;

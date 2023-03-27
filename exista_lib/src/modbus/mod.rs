@@ -9,7 +9,12 @@ use std::time::Duration;
 
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::io::ErrorKind;
+mod com_status;
 pub mod msg;
+pub mod services;
+use services as callback;
+
+use com_status::ComStatus;
 use msg::ModbusMsg;
 use crate::application::loger::Log;
 use crate::requests::Request;
@@ -19,9 +24,10 @@ use std::thread::{self, JoinHandle};
 use chrono::Local;
 use crate::application::constants::*;
 
-use std::sync::mpsc::Sender;
 
-use std::io;
+use std::{io, process};
+
+use self::callback::services;
 
 
 
@@ -85,16 +91,10 @@ impl Modbus{
        Ok(bus)
     }
 
-    /// running modbus services: listening the port and running modbus timer.
-    pub fn run(&self)->(JoinHandle<()>, JoinHandle<()>){
-
-        let heartbeat = self.clone().create_heartbet();
-        let listener = self.clone().create_listener();
-
-        let heartbeat = thread::spawn(heartbeat);
-        let listener = thread::spawn(listener);
-
-        (heartbeat, listener)
+    /// running modbus services.
+    pub fn run(&self)->Vec<JoinHandle<()>>{
+        let services = services(&self);
+        services.into_iter().map(thread::spawn).collect()
     }
 
     /// athomary operation to send data into modbus and return a reply immediately.
@@ -136,13 +136,12 @@ impl Modbus{
 
     // private API
 
-    fn create_heartbet(mut self)->impl FnOnce() + Send + 'static{
+    fn create_heartbeat(mut self)->impl FnOnce() + Send + 'static{
 
         let heartbeat_msg = ModbusMsg::from(&HEARTBEAT[..], HEARTBEAT.len());
 
         move || {
             loop{
-
                 Log::write("sending heartbeat...");
 
                 if self.send(&heartbeat_msg).is_ok(){
@@ -171,7 +170,11 @@ impl Modbus{
                         Log::write(
                             format!("received event: {:?}, time: {}", msg.data(), Local::now().to_rfc3339()).as_str());
                             
-                        RequestsStack::push(Request::battery_event(msg));
+                        RequestsStack::push(Request::battery_event(msg))
+                            .unwrap_or_else(|err|{
+                                Log::write(format!("can`t write event into stack! {err}").as_str());
+                                process::exit(1);
+                            });
                     }
                     else{
                         Log::write(format!("received trash: {feedback:?}").as_str());
@@ -218,3 +221,4 @@ impl DerefMut for Modbus{
         self.status.borrow_mut()
     }
 }
+

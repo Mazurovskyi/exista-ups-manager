@@ -1,117 +1,57 @@
-use std::{sync::RwLock, borrow::Borrow, time::Duration};
+use std::time::Duration;
 use once_cell::sync::Lazy;
-use std::sync::Arc;
+pub mod cube_serial_num;
 
-//use std::error::Error;
-//use std_semaphore::Semaphore;
 
-/// default ups serial number
+
 pub const UPS_SERIAL_NUMBER: &str = "NA";
-
 static mut CUBE_SERIAL_NUMBER: Lazy<String> = Lazy::new(||String::from("unknown"));
 
-/// representation of cube serial number
-pub struct CubeSerialNumber(Lazy<String>);
-
-impl CubeSerialNumber {
-    pub fn set(serial_num: String){
-        unsafe{
-            *CUBE_SERIAL_NUMBER = serial_num;
-        }
-    }
-    pub fn get()->&'static str{
-        unsafe{
-            CUBE_SERIAL_NUMBER.borrow()
-        }
-    }
-}
 
 
-
-
-
+//----PATHS----
 pub const LOG_FILE_PATH: &str = "/home/schindler/rust_exista/exista_log.txt";
 pub const JSON_PATTERNS: &str = "/home/schindler/rust_exista/patterns.json";
 
-// MQTT constants
+
+
+//-----------------------MQTT_CONSTANTS-----------------------
+pub const HOST: &str = "127.0.0.1:1883";
+pub const CLIENT_ID: &str = "exista_ups_manager";
+pub const MQTT_VERSION: u32 = 0; 
+pub const KEEP_ALIVE: u64 = 60;
+pub const QOS: i32 = 0; 
+pub const DELIVERY_TIME: Duration = Duration::from_secs(1);
+
 pub const TOPIC_BATTERY_INFO_REQ: &str = "gateway/batteryInfo.req";
 pub const TOPIC_BATTERY_INFO_REP: &str = "gateway/batteryInfo.rep";
 pub const TOPIC_DEVICE_INFO: &str = "gateway/deviceInfo";   // recive
 pub const TOPIC_UPS_INFO: &str = "gateway/upsInfo";         // reply
 pub const TOPIC_EVENT: &str = "gateway/event/battery";
-pub const SUBSCRIBE_TOPICS: [&str;2] = [TOPIC_BATTERY_INFO_REQ, TOPIC_DEVICE_INFO];
-pub const DELIVERY_TIME: Duration = Duration::from_secs(1);
 
-pub const QOS:   &[i32]=     &[0, 0];  
-pub const MQTT_VERSION: u32 = 0;
-pub const CLIENT_ID: &str = "exista_ups_manager";
-pub const HOST: &str = "127.0.0.1:1883";
-pub const KEEP_ALIVE: u64 = 60;
 
-//Modbus constants
+
+//-----------------------MODBUS_CONSTANTS-----------------------
 pub const PORT: &str = "/dev/ttyUPS";
+pub const HEARTBEAT_FREQ: u64 = 60;
 
-// UPS delay consists about 5 ms. Setting timeout to 10 ms allows to receive replies without timeout errors.
+// Setting timeout to 10 ms allows to receive replies without timeout errors. 
+// Because UPS delay consists about 5 ms. 
 pub const TIMEOUT: u64 = 10;    
 
+//com_status code
+pub const CONNECT: u8 = 1;
+pub const DISCONNECT: u8 = 2;
 
-
-///UPS com status
-pub struct ComStatus(Arc<RwLock<Connection>>);
-pub enum Connection{
-    Connect,
-    Disconnect
-}
-impl ComStatus{
-    pub fn set_connect(&mut self){
-        *self.0.write().unwrap() = Connection::Connect;
-    }
-    pub fn set_disconnect(&mut self){
-        *self.0.write().unwrap() = Connection::Disconnect;
-    }
-    pub fn clone(&self)->Self{
-        ComStatus(Arc::clone(&self.0))
-    }
-    pub fn is_connect(&self)->bool{
-        if let Connection::Connect = *self.0.read().unwrap(){
-            return true
-        }
-        false
-    }
-    pub fn get_status(&self)->u8{
-        if self.is_connect(){
-            CONNECT
-        }
-        else{
-            DISCONNECT
-        }
-    }
-}
-
-impl Default for ComStatus{
-    fn default() -> Self {
-        Self(Arc::new(RwLock::new(Connection::Disconnect)))
-    }
-}
-
-// status representation
-const CONNECT: u8 = 1;
-const DISCONNECT: u8 = 2;
+//----UPS_MODULE_NAME----
+pub const HOURS_1: &str = "UPS1H";
+pub const HOURS_4: &str = "UPS4H";
+pub const HOURS_NA: &str = "unknown";
 
 
 
-
-
-
-
-
-
-
-
-
-
+//-----------------------REQUESTS-----------------------
 //----BATTERY_INFO----
-
 pub const READ_DC_STATUS: [u16; 4] =      [0x11, 0x03, 0x17, 0x01];
 pub const READ_BATTERY_STATUS: [u16; 4] = [0x11, 0x03, 0x00, 0x01];
 pub const READ_VOLTAGE: [u16; 4] =        [0x11, 0x03, 0x04, 0x01];
@@ -120,52 +60,23 @@ pub const READ_SOC: [u16; 4] =            [0x11, 0x03, 0x1C, 0x01];
 pub const READ_SOH: [u16; 4] =            [0x11, 0x03, 0x1D, 0x01];
 pub const READ_BACKUP_TIME: [u16; 4] =    [0x11, 0x03, 0x1B, 0x01]; //same as REMAIN_TIME
 
-//----BATTERY_EVENT----
-
 //----UPS_INFO----
 pub const READ_MAX_AUTHONOMY_TIME: [u16; 4] = [0x11, 0x03, 0x20, 0x01];   //-> 0: "UPS1H", 1: "UPS4H" else: "unknown"
-pub const READ_FW_VERSION: [u16; 4] =     [0x01, 0x03, 0x00, 0x01];
-pub const HOURS_1: &str = "UPS1H";
-pub const HOURS_4: &str = "UPS4H";
-pub const HOURS_NA: &str = "unknown";
+pub const READ_FW_VERSION: [u16; 4] =         [0x01, 0x03, 0x00, 0x01];
 
-//----else----
+//----HEARTBEAT----
+pub const HEARTBEAT: [u16; 4] =       [0x01, 0x06, 0x50, 0x00];
+
+//----UNUSED----
 const _READ_REMAIN_TIME: [u16; 4] =    [0x11, 0x03, 0x1A, 0x01];
 const _READ_CHARGING_STATUS: [u16; 4]= [0x11, 0x03, 0x19, 0x01];
 const _GET_SIGN: [u16; 4] =            [0x11, 0x03, 0x11, 0x01];
 const _GET_TEMPERATURE: [u16; 4] =     [0x01, 0x03, 0x55, 0x01];
-
 const _CUBE_POWER_RESET: [u16; 4] =    [0x01, 0x06, 0x1F, 0xAA55];
-pub const HEARTBEAT: [u16; 4] =       [0x01, 0x06, 0x50, 0x00];
-pub const HEARTBEAT_FREQ: u64 = 60;
 
 
 
-pub const BATTERY_INFO_REQUEST: &[[u16;4]] = &[READ_DC_STATUS, READ_BATTERY_STATUS, READ_VOLTAGE,
-READ_CURRENT_VALUE, READ_SOC, READ_SOH, READ_BACKUP_TIME];
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+//----EVENTS----
 pub const BATT_IC_OK: u16 = 0x1400;  //Battery normal
 pub const BATT_IC_SUPPLY_BYDC: u16 = 0x1500;  //supply from DC
 pub const BATT_IC_SUPPLY_BYBATT: u16 = 0x1600;  //supply from battery
@@ -188,32 +99,3 @@ pub const BATT_IC_DEFECT_DISCHARG_OVER_CURR: u16 = 0x2600;  // over current disc
 
 pub const DONT_FORWARD: i32 = 10;
 
-pub trait Map{
-    fn map(self)->i32;
-}
-impl Map for u16{
-    fn map(self)->i32{
-        match self{
-            BATT_IC_OK => 7,                    // BATT_IC_OK
-            BATT_IC_SUPPLY_BYDC => 2,           // BATT_IC_SUPPLY_BYDC
-            BATT_IC_SUPPLY_BYBATT => 1,         // BATT_IC_SUPPLY_BYBATT
-            BATT_IC_CHARGING => 9,              // BATT_IC_CHARGING
-            BATT_IC_LOW => 6,                   // BATT_IC_LOW 
-            BATT_IC_DISCHARGED => 8,            // BATT_IC_DISCHARGED
-            BATT_IC_MISSING => 3,               // BATT_IC_MISSING
-            BATT_IC_DEFECT => 5,                // BATT_IC_DEFECT
-            BATT_IC_AGED => 4,                  // BATT_IC_AGED
-            BATT_IC_SHAKE => 5,                 // BATT_IC_DEFECT
-            BATT_IC_CHARGED => 9,               // BATT_IC_CHARGING
-            BATT_IC_REBOOT => DONT_FORWARD,     // DONT_FORWARD!
-            BATT_IC_CHARGING_NO_CHANGE => 9,    // BATT_IC_CHARGING
-            BATT_IC_CHARG_OVER_CURRENT => 5,    // BATT_IC_DEFECT
-            BATT_IC_OVER_VLOT => 5,             // BATT_IC_DEFECT
-            BATT_IC_OVER_TEMPERATURE => DONT_FORWARD,   // DONT_FORWARD!
-            BATT_IC_LOW_TEMPERATURE => DONT_FORWARD,    // DONT_FORWARD!
-            BATT_IC_EQUAGL_CHARG_TOOLONG => 4,          // BATT_IC_AGED  
-            BATT_IC_DEFECT_DISCHARG_OVER_CURR => 8,     // BATT_IC_DISCHARGED
-            _=> DONT_FORWARD                            // DONT_FORWARD!
-        }
-    }
-}

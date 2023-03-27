@@ -5,10 +5,14 @@ use std::fmt::Display;
 use json::JsonValue;
 use chrono::Local;
 
-
-use crate::requests::ModbusMsg;
 use crate::application::constants::*;
+use crate::application::constants::cube_serial_num::CubeSerialNumber;
+use crate::requests::ModbusMsg;
+
 use crate::application::loger::Log;
+
+mod map;
+use map::Map;
 
 use super::*;
 
@@ -37,17 +41,19 @@ impl BatteryEvent{
     fn event(&self)->&ModbusMsg{
         self.event.borrow()
     }
+    fn code(&self)->Option<u16>{
+        let data = self.event().data();
+        Some(((*data.get(6)? as u16) << 8) + (*data.get(7)? as u16))   // msg[6..8]
+    }
 
     // decoding operations
     fn decode(&self, event: &ModbusMsg)->Option<i32>{
 
-        let msg  = event.data();
+        let event_code = self.code()?;
 
-        let battery_event = ((*msg.get(6)? as u16) << 8) + (*msg.get(7)? as u16);   // msg[6..8]
-
-        match battery_event.map(){
+        match event_code.map(){
             DONT_FORWARD => {
-                Log::write(format!("Event should be skipped. Code: {battery_event}").as_str());
+                Log::write(format!("Event should be skipped. Code: {event_code}").as_str());
                 None
             },
             value => Some(value)
