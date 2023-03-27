@@ -9,7 +9,8 @@ use crate::requests::{*, requests_stack::RequestsStack};
 
 
 pub trait Handler{
-    /// handles incoming Mqtt message
+    /// handles incoming Mqtt message. 
+    /// Returns Err() only if Request cannot be pushed into Requests handling queue
     fn handle(self)->Result<String, String>;
 }
 trait GetPayload{

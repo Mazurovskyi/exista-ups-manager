@@ -8,7 +8,8 @@ use std::vec::IntoIter;
 
 /// trait provides method to insert data into Json-object
 pub trait JsonPattern{
-    //fn build(topic: &str)->Result<JsonValue, Box<dyn Error>>;
+    /// assignes "values" data to empty Json pattern. 
+    /// Skips the field if it is already assigned.
     fn assign(&mut self, values: Vec<JsonValue>);
     fn fill(&mut self, values: &mut IntoIter<JsonValue>);
 }

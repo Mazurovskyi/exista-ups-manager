@@ -27,28 +27,24 @@ impl App{
         let mqtt_client = MqttClient::config(callbacks)?;
 
         Ok(
-            App{
-                modbus, 
-                mqtt_client
-            }
+            App{modbus, mqtt_client}
         )
     }
 
-    /// run mqtt client and modbus communication.
-    pub fn run(mut self)->Result<(), Box<dyn Error>>{
+    /// launch mqtt client and modbus communication.
+    pub fn launch(mut self)->Self{
 
         self.mqtt_client_mut().run();
 
         let services = Modbus::services(self.modbus());
         let _modbus_services = self.modbus().run(services);
 
-        self.run_forever()
+        self
     }
 
-    fn run_forever(self)->Result<(), Box<dyn Error>>{
-        
+    /// run application
+    pub fn run_forever(self)->Result<(), String>{
         loop{
-
             // block current thread until data in stack become avalliable:
             let mut request = RequestsStack::pull()?;
 
