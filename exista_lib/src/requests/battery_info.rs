@@ -48,10 +48,10 @@ impl BatteryInfo{
     // decoding operations 
     fn decode(msg: ModbusMsg, i: usize)->Option<JsonValue>{
         if i == 4 || i == 5 {
-            ModbusMsg::registers_value_percent(msg.data())
+            Some(msg.registers_value_percent().into())
         }
         else{
-            ModbusMsg::registers_value(msg.data())
+            Some(msg.registers_value().into())
         } 
     }
 }

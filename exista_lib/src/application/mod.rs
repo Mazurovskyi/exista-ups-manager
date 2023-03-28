@@ -56,7 +56,6 @@ impl App{
             let time = Local::now().to_rfc3339();
             Log::write(format!("\nJson pattern is ready: {time}\n{}", request).as_str());
             
-
             let result = self.mqtt_client().publish(&request, DELIVERY_TIME, request.topic()).and(
                 if request.bat_ic_low(){
                     self.mqtt_client().publish(&request, DELIVERY_TIME, TOPIC_RESET)

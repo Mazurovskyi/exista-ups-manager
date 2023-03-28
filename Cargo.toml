@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+    "exista",
+    "exista_lib"
+]

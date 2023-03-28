@@ -48,17 +48,16 @@ impl UpsInfo{
     
 
     // decoding operations 
-    fn get_module_name(&self, msg: ModbusMsg)->Option<&str>{
+    fn get_module_name(&self, msg: &ModbusMsg)->Option<&str>{
         match *msg.data().get(4)?{
             0=> Some(HOURS_1),
             1=> Some(HOURS_4),
             _=> Some(HOURS_NA)
         }
     }
-    fn get_fw_version(&self, msg: ModbusMsg)->Option<String>{
-        let msg = msg.data();
+    fn get_fw_version(&self, msg: &ModbusMsg)->Option<String>{
 
-        let registers_value = ((*msg.get(3)? as u32) << 8) + (*msg.get(4)? as u32);
+        let registers_value = msg.registers_value()?;
 
         let main_vers = (registers_value - 0xA003) / 255;
         let sub_vers =  (registers_value - 0xA003) % 255;
@@ -122,11 +121,8 @@ impl ModbusData for UpsInfo{
     
     fn parse_modbus_data(&self, raw_data: Vec<ModbusMsg>)->Vec<JsonValue>{
 
-        let mut iter = raw_data.into_iter();
-
-        let module_name: JsonValue = self.get_module_name(iter.next().unwrap()).into();
-
-        let fw_version: JsonValue =  self.get_fw_version(iter.next().unwrap()).into();
+        let module_name: JsonValue = self.get_module_name(raw_data.get(0).unwrap()).into();
+        let fw_version: JsonValue =  self.get_fw_version(raw_data.get(1).unwrap()).into();
 
         Vec::from([module_name, fw_version])
     }
