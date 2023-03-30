@@ -11,45 +11,34 @@ use crate::requests::{*, requests_stack::RequestsStack};
 pub trait Handler{
     /// handles incoming Mqtt message. 
     /// Returns Err() only if Request cannot be pushed into Requests handling queue
-    fn handle(self)->Result<String, String>;
-}
-trait GetPayload{
-    fn get_payload(self, payload: &str)->Result<String, Box<dyn Error>>;
+    fn handle(&self)->Result<String, String>;
+    fn get_payload(&self, payload: &str)->Result<String, Box<dyn Error>>;
 }
 
-impl Handler for Option<Message>{
-    fn handle(self)->Result<String, String>{
+impl Handler for Message{
+    fn handle(&self)->Result<String, String>{
 
-        // empty message is not a reason to fail
-        let msg = match self.ok_or_else(|| "Received an empty mqtt message"){
-            Ok(msg)=>msg,
-            Err(err) => return Ok(err.to_owned())
-        };
-
-        match msg.topic(){
+        let time = Local::now().to_rfc3339();
+        
+        match self.topic(){
             TOPIC_BATTERY_INFO_REQ => {
-                let report = format!("Received {TOPIC_BATTERY_INFO_REQ}: {}", Local::now().to_rfc3339());
                 RequestsStack::push(Request::battery_info())?;
-                Ok(report)
+                Ok(format!("Received {TOPIC_BATTERY_INFO_REQ} at {time}."))
             },
             TOPIC_DEVICE_INFO => {
-                let report = format!("Received {TOPIC_DEVICE_INFO}: {}", Local::now().to_rfc3339());
-
-                let serial_number = msg.get_payload("serialNumber")
+                let serial_number = self.get_payload("serialNumber")
                                        .unwrap_or("unknown".to_owned());
 
                 CubeSerialNumber::set(serial_number);
                 RequestsStack::push(Request::ups_info())?;
-                Ok(report)
+                
+                Ok(format!("Received {TOPIC_DEVICE_INFO}: {time}"))
             },
             _=> Ok("Received mqtt message on unexpected topic".to_owned())
         }
     }
-}
 
-
-impl GetPayload for Message {
-    fn get_payload(self, payload: &str)->Result<String, Box<dyn Error>>{
+    fn get_payload(&self, payload: &str)->Result<String, Box<dyn Error>>{
 
         let json_obj = json::parse(&self.payload_str())?
             .remove(payload);

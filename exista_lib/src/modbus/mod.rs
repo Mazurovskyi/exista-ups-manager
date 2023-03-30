@@ -9,16 +9,13 @@ use std::thread::{self, JoinHandle};
 extern crate serial;
 use serial:: {SystemPort, prelude::SerialPort};
 
-use crate::application::loger::Log;
-
 mod com_status;
 pub mod msg;
 pub mod services;
 
 use com_status::ComStatus;
 use msg::ModbusMsg;
-
-use self::services::Service;
+use services::Service;
 
 
 
@@ -84,27 +81,25 @@ impl Modbus{
             status: ComStatus::default()
         };
 
-        Log::write("Modbus configured.");
+        dbg!("Modbus configured.");
         Ok(bus)
     }
 
     /// running modbus services.
     pub fn run(&self, services: Vec<Service>)->Vec<JoinHandle<()>>{
-        Log::write("running modbus...");
+        dbg!("Running modbus...");
         services.into_iter().map(thread::spawn).collect()
     }
 
     /// athomary operation to send data into modbus and return a reply immediately.
     pub fn send(&self, msg: &ModbusMsg)->Result<ModbusMsg, Box<dyn Error + '_>>{
 
-        Log::write(format!("sending modbus message: {:?}", msg.data()).as_str());
+        dbg!("sending modbus message: {:?}", msg.data());
 
         let mut port_guard = self.port().lock()?;
 
         Self::sending(&mut port_guard, msg.data())?;
         let returned_msg = Self::reading(&mut port_guard)?;
-
-        // drop(port_guard)
 
         // Modbus RTU requires min 2 ms delay.
         thread::sleep(Duration::from_millis(2));
@@ -135,10 +130,11 @@ impl Modbus{
 
     fn sending(port_guard: &mut MutexGuard<SystemPort>, data: &[u8])->Result<(), io::Error>{
         loop{
-            if port_guard.write(data).is_err_and(|err|err.kind() == ErrorKind::Interrupted){
-                continue;
+            match port_guard.write(data){
+                Ok(_) => return Ok(()),
+                Err(err) if err.kind() == ErrorKind::Interrupted => continue,
+                Err(err) => return Err(err)
             }
-            return Ok(())
         }
     }
     

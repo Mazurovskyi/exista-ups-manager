@@ -6,14 +6,18 @@
 #[macro_use]
 extern crate json;
 
-//use log::{info, warn, error, LevelFilter};
-
 mod modbus;
 mod mqtt;
 mod requests;
 pub mod json_patterns;
 pub mod application;
 
+
+
+use chrono::Local;
+pub fn time()->String{
+    Local::now().to_rfc3339()
+}
 
 
 

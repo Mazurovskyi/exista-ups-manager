@@ -1,16 +1,17 @@
+use std::borrow::{Borrow, BorrowMut};
+use std::error::Error;
+
+use chrono::Local;
 
 use crate::modbus::Modbus;
 use crate::mqtt::MqttClient;
 use crate::requests::requests_stack::RequestsStack;
 
 pub mod constants;
-pub mod loger;
-use std::borrow::{Borrow, BorrowMut};
-use std::error::Error;
-
-use crate::application::loger::Log;
-use chrono::Local;
 use self::constants::*;
+
+pub mod loger;
+
 
 
 pub struct App{
@@ -43,18 +44,18 @@ impl App{
     }
 
     /// run application
-    pub fn run_forever(self)->Result<(), String>{
+    pub fn run_forever(self)->Result<(), Box<dyn Error>>{
         loop{
             // block current thread until data in stack become avalliable:
             let mut request = RequestsStack::pull()?;
 
             if let Err(err) = request.insert_data(self.modbus()){
-                Log::write(format!("Error while trying to insert data into Request: {err}").as_str());
+                println!("Error while trying to insert data into Request: {err}");
                 continue;
             }
             
             let time = Local::now().to_rfc3339();
-            Log::write(format!("\nJson pattern is ready: {time}\n{}", request).as_str());
+            println!("\nJson pattern is ready: {time}\n{request}");
             
             let result = self.mqtt_client().publish(&request, DELIVERY_TIME, request.topic()).and(
                 if request.bat_ic_low(){
@@ -66,8 +67,8 @@ impl App{
             );
 
             match result{
-                Ok(_) => Log::write(format!("Successfully delivered! {}", Local::now().to_rfc3339()).as_str()),
-                Err(err) => Log::write(format!("Delivery time out. Message has not delivered. {err}").as_str())
+                Ok(_) => println!("Successfully delivered at: {}", Local::now().to_rfc3339()),
+                Err(err) => println!("Delivery time out. Message has not delivered. {err}")
             }
         }
     }

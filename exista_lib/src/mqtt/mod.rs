@@ -52,10 +52,14 @@ impl MqttClient{
         .finalize();
         //.will_message(lwt);
 
+        dbg!("MQTT client configured.");
+
         Ok(Self::from(client, conn_opts, callback))
     }
 
     pub fn run(&mut self){
+
+        dbg!("Running MQTT client...");
 
         let on_connect_success = self.callback().on_connect_success();
         let on_connect_failure = self.callback().on_connect_failure();

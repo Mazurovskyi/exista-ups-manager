@@ -124,7 +124,7 @@ impl ModbusData for BatteryInfo{
 
 impl Display for BatteryInfo{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "(BatteryInfo:,\n{})", self.json().pretty(4))
+        write!(f, "BatteryInfo:,\n{}", self.json().pretty(4))
     }
 }
 

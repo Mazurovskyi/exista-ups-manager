@@ -131,7 +131,7 @@ impl ModbusData for UpsInfo{
 
 impl Display for UpsInfo{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-         write!(f, "(UPSInfo:,\n{})", self.json().pretty(4))
+         write!(f, "UPSInfo:,\n{}", self.json().pretty(4))
     }
 }
 

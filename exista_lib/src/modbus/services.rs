@@ -3,7 +3,7 @@ use std::{thread, process, time::Duration};
 use chrono::Local;
 
 use super::{Modbus, ModbusMsg};
-use crate::application::{loger::Log, constants::*};
+use crate::application::constants::*;
 use crate::requests::{Request, requests_stack::RequestsStack};
 
 
@@ -37,14 +37,12 @@ fn heartbeat(mut bus: Modbus)->impl FnOnce() + Send + 'static{
 
     move || {
         loop{
-            Log::write("sending heartbeat...");
-
             if bus.send(&heartbeat_msg).is_ok(){
-                Log::write("heartbeat reply received. com status: connect.");
+                println!("heartbeat reply received. com status: connect.");
                 bus.set_connect()
             }
             else{
-                Log::write("no heartbeat reply. com status: disconect.");
+                println!("no heartbeat reply. com status: disconect.");
                 bus.set_disconnect()
             }
             thread::sleep(Duration::from_secs(HEARTBEAT_FREQ))
@@ -62,17 +60,17 @@ fn listener(bus: Modbus)->impl FnOnce() + Send + 'static{
             if let Ok(msg) = bus.read_once(&mut feedback){
 
                 if msg.is_event(){
-                    Log::write(
-                        format!("received event: {:?}, time: {}", msg.data(), Local::now().to_rfc3339()).as_str());
+                   
+                    println!("received event: {:?}, time: {}", msg.data(), Local::now().to_rfc3339());
                         
                     RequestsStack::push(Request::battery_event(msg))
                         .unwrap_or_else(|err|{
-                            Log::write(format!("can`t write event into stack! {err}").as_str());
+                            println!("Executing error: can`t write event into stack! {err}");
                             process::exit(1);
                         });
                 }
                 else{
-                    Log::write(format!("received trash: {feedback:?}").as_str());
+                    dbg!("received trash: {:?}", feedback);
                 }
             }
         }

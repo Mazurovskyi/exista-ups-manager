@@ -3,7 +3,7 @@ use std::{thread, time::Duration};
 
 use paho_mqtt::{AsyncClient, Message};
 
-use crate::application::{loger::Log, constants::*};
+use crate::application::constants::*;
 
 mod msg;
 use msg::Handler;
@@ -56,45 +56,44 @@ impl Callbacks{
 
 
 fn message_callback(_client: &AsyncClient, msg: Option<Message>){
-    match msg.handle(){
-        Ok(report) => Log::write(format!("mqtt message handle result: {report}").as_str()),
-        Err(report) => {
-            Log::write(format!("Error was heappen handling the message: {report}").as_str());
-            process::exit(1);
+   if let Some(msg) = msg{
+
+        match msg.handle(){
+            Ok(report) => println!("mqtt message handle result: {report}"),
+            Err(report) => {
+                println!("Error was heappen handling the message: {report}");
+                process::exit(1);
+            }
         }
-    }
+        
+   }
+   else{
+        dbg!("Empty mqtt message has received");
+   }   
 }
 
 
 fn connected(_client: &AsyncClient){
-    Log::write("connected to mqtt broker")
+    println!("connected to mqtt broker")
 }
 
 
 fn connection_lost(client: &AsyncClient){
-    Log::write("mqtt broker connection lost. Trying to reconnect...");
+    println!("mqtt broker connection lost. Trying to reconnect...");
     thread::sleep(Duration::from_millis(1000));
     client.reconnect_with_callbacks(on_connect_success, on_connect_failure);
 }
 
 
 fn on_connect_success(client: &AsyncClient, _msgid: u16){
-
     client.subscribe_many(&[TOPIC_BATTERY_INFO_REQ, TOPIC_DEVICE_INFO], &[QOS, QOS]);
-
-    Log::write(
-        format!("successful connection to the broker.
-        subscribed to topics: {:?}", [TOPIC_BATTERY_INFO_REQ, TOPIC_DEVICE_INFO]).as_str()
-    );
+    println!("MQTT client connected. subscribed to topics: {:?}", 
+    [TOPIC_BATTERY_INFO_REQ, TOPIC_DEVICE_INFO]);
 }
 
 
 fn on_connect_failure(client: &AsyncClient, _msgid: u16, rc: i32){
-    Log::write(
-        format!("Connection attempt failed with error code {}.
-        trying to reconnect...", rc).as_str()
-    );
-        
+    println!("Connection attempt failed with error code {rc}. trying to reconnect...");        
     thread::sleep(Duration::from_millis(1000));
     client.reconnect_with_callbacks(on_connect_success, on_connect_failure);
 }
