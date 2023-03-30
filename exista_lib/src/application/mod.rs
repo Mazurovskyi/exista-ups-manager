@@ -66,7 +66,7 @@ impl App{
 
             match result{
                 Ok(_) => Log::write("Successfully delivered."),
-                Err(err) => Log::write(&format!("Delivery time out. Message has not delivered. {err}"))
+                Err(err) => Log::write(&format!("Delivery time out: {err}"))
             }
         }
     }
