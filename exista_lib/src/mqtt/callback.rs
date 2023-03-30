@@ -1,5 +1,6 @@
 use std::{thread, time::Duration};
 
+use chrono::Local;
 use paho_mqtt::{AsyncClient, Message};
 
 use crate::application::{constants::*, loger::Log};
@@ -55,18 +56,21 @@ impl Callbacks{
 
 
 fn message_callback(_client: &AsyncClient, msg: Option<Message>){
-   if let Some(msg) = msg{
+    
+    let time = Local::now().to_rfc3339();
 
-        match msg.handle(){
-            Ok(report) => Log::write(&format!("Mqtt message received: {report}")),
-            Err(report) => {
-                panic!("Error was heappen handling the Mqtt message: {report}");
-            }
-        }    
-   }
-   else{
-        println!("Empty mqtt message has received");
-   }   
+    if let Some(msg) = msg{
+
+            match msg.handle(){
+                Ok(report) => Log::write(&format!("Mqtt message received: {report} at {time}")),
+                Err(report) => {
+                    panic!("Error was heappen handling the Mqtt message: {report}");
+                }
+            }    
+    }
+    else{
+            println!("Empty mqtt message has received");
+    }   
 }
 
 
