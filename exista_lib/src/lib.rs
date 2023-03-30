@@ -14,10 +14,7 @@ pub mod application;
 
 
 
-use chrono::Local;
-pub fn time()->String{
-    Local::now().to_rfc3339()
-}
+
 
 
 

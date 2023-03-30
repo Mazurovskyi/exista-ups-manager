@@ -1,8 +1,6 @@
 use std::borrow::{Borrow, BorrowMut};
 use std::error::Error;
 
-use chrono::Local;
-
 use crate::modbus::Modbus;
 use crate::mqtt::MqttClient;
 use crate::requests::requests_stack::RequestsStack;
@@ -11,6 +9,7 @@ pub mod constants;
 use self::constants::*;
 
 pub mod loger;
+use loger::Log;
 
 
 
@@ -50,12 +49,11 @@ impl App{
             let mut request = RequestsStack::pull()?;
 
             if let Err(err) = request.insert_data(self.modbus()){
-                println!("Error while trying to insert data into Request: {err}");
+                Log::write(&format!("Error while trying to insert data into Request: {err}"));
                 continue;
             }
             
-            let time = Local::now().to_rfc3339();
-            println!("\nJson pattern is ready: {time}\n{request}");
+            Log::write(&format!("Json pattern is ready: \n{request}"));
             
             let result = self.mqtt_client().publish(&request, DELIVERY_TIME, request.topic()).and(
                 if request.bat_ic_low(){
@@ -67,8 +65,8 @@ impl App{
             );
 
             match result{
-                Ok(_) => println!("Successfully delivered at: {}", Local::now().to_rfc3339()),
-                Err(err) => println!("Delivery time out. Message has not delivered. {err}")
+                Ok(_) => Log::write("Successfully delivered."),
+                Err(err) => Log::write(&format!("Delivery time out. Message has not delivered. {err}"))
             }
         }
     }

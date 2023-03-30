@@ -1,9 +1,8 @@
-use std::process;
 use std::{thread, time::Duration};
 
 use paho_mqtt::{AsyncClient, Message};
 
-use crate::application::constants::*;
+use crate::application::{constants::*, loger::Log};
 
 mod msg;
 use msg::Handler;
@@ -59,16 +58,14 @@ fn message_callback(_client: &AsyncClient, msg: Option<Message>){
    if let Some(msg) = msg{
 
         match msg.handle(){
-            Ok(report) => println!("mqtt message handle result: {report}"),
+            Ok(report) => Log::write(&format!("Mqtt message received: {report}")),
             Err(report) => {
-                println!("Error was heappen handling the message: {report}");
-                process::exit(1);
+                panic!("Error was heappen handling the Mqtt message: {report}");
             }
-        }
-        
+        }    
    }
    else{
-        dbg!("Empty mqtt message has received");
+        println!("Empty mqtt message has received");
    }   
 }
 

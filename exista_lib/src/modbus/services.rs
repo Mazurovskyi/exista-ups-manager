@@ -1,9 +1,7 @@
-use std::{thread, process, time::Duration};
-
-use chrono::Local;
+use std::{thread, time::Duration};
 
 use super::{Modbus, ModbusMsg};
-use crate::application::constants::*;
+use crate::application::{loger::Log, constants::*};
 use crate::requests::{Request, requests_stack::RequestsStack};
 
 
@@ -38,11 +36,11 @@ fn heartbeat(mut bus: Modbus)->impl FnOnce() + Send + 'static{
     move || {
         loop{
             if bus.send(&heartbeat_msg).is_ok(){
-                println!("heartbeat reply received. com status: connect.");
+                Log::write("heartbeat reply received. com status: connect.");
                 bus.set_connect()
             }
             else{
-                println!("no heartbeat reply. com status: disconect.");
+                Log::write("no heartbeat reply. com status: disconect.");
                 bus.set_disconnect()
             }
             thread::sleep(Duration::from_secs(HEARTBEAT_FREQ))
@@ -61,16 +59,15 @@ fn listener(bus: Modbus)->impl FnOnce() + Send + 'static{
 
                 if msg.is_event(){
                    
-                    println!("received event: {:?}, time: {}", msg.data(), Local::now().to_rfc3339());
+                    Log::write(&format!("Received an event: {:?}", msg.data()));
                         
                     RequestsStack::push(Request::battery_event(msg))
                         .unwrap_or_else(|err|{
-                            println!("Executing error: can`t write event into stack! {err}");
-                            process::exit(1);
+                            panic!("Executing error: can`t write event into stack! {err}");
                         });
                 }
                 else{
-                    dbg!("received trash: {:?}", feedback);
+                    println!("received trash: {:?}", feedback);
                 }
             }
         }

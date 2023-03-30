@@ -81,20 +81,20 @@ impl Modbus{
             status: ComStatus::default()
         };
 
-        dbg!("Modbus configured.");
+        println!("Modbus configured.");
         Ok(bus)
     }
 
     /// running modbus services.
     pub fn run(&self, services: Vec<Service>)->Vec<JoinHandle<()>>{
-        dbg!("Running modbus...");
+        println!("Running modbus...");
         services.into_iter().map(thread::spawn).collect()
     }
 
     /// athomary operation to send data into modbus and return a reply immediately.
     pub fn send(&self, msg: &ModbusMsg)->Result<ModbusMsg, Box<dyn Error + '_>>{
 
-        dbg!("sending modbus message: {:?}", msg.data());
+        println!("sending modbus message: {:?}", msg.data());
 
         let mut port_guard = self.port().lock()?;
 

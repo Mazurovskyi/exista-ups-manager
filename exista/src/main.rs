@@ -1,15 +1,16 @@
 use std::error::Error;
-use exista_lib::application::App;
+use exista_lib::application::{App, loger::Log};
+
 
 fn main() -> Result<(), Box<dyn Error>>{
 
     let app_config = App::config().or_else(|err|{
-        println!("Configuration error: {err}"); 
+        Log::write(&format!("Configuration error: {err}")); 
         Err(err)
     })?;
 
     App::launch(app_config).run_forever().or_else(|err|{
-        println!("Executing error: {err}");
+        Log::write(&format!("Executing error: {err}"));
         Err(err)
     })
 }
