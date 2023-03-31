@@ -16,15 +16,17 @@ use super::*;
 
 pub struct BatteryEvent{
     json: JsonValue,
-    event: ModbusMsg,
+    msg: ModbusMsg,
+    event_time: String,
     publish_topic: &'static str,
     qos: i32
 }
 impl BatteryEvent{
-    pub fn new(event: ModbusMsg)->Self{
+    pub fn new(msg: ModbusMsg)->Self{
         Self {
             json: Self::build_json(), 
-            event,
+            msg,
+            event_time: Local::now().to_rfc3339(),
             publish_topic: TOPIC_EVENT,
             qos: 0
         }
@@ -36,18 +38,21 @@ impl BatteryEvent{
     fn json_mut(&mut self)->& mut JsonValue{
         self.json.borrow_mut()
     }
-    fn event(&self)->&ModbusMsg{
-        self.event.borrow()
+    fn msg(&self)->&ModbusMsg{
+        self.msg.borrow()
     }
-    fn code(&self)->Option<u16>{
-        let data = self.event().data();
+    fn event_code(&self)->Option<u16>{
+        let data = self.msg().data();
         Some(((*data.get(6)? as u16) << 8) + (*data.get(7)? as u16))   // msg[6..8]
+    }
+    fn event_time(&self)->&str{
+        self.event_time.borrow()
     }
 
     // decoding operations
     fn decode(&self, _event: &ModbusMsg)->Result<i32, String>{
 
-        let event_code = self.code().ok_or(format!("Event message is incomplete!"))?;
+        let event_code = self.event_code().ok_or(format!("Event message is incomplete!"))?;
 
         match event_code.map(){
             DONT_FORWARD => {
@@ -81,7 +86,7 @@ impl MqttSending for BatteryEvent{
         self.qos
     }
     fn bat_ic_low(&self)->bool{
-        if self.code() == Some(BATT_IC_LOW) {
+        if self.event_code() == Some(BATT_IC_LOW) {
             true
         }
         else{
@@ -94,9 +99,9 @@ impl RequestObject for BatteryEvent{
     fn insert_data<'a>(&mut self, _bus: &'a Modbus)->Result<(), Box<dyn Error + 'a>>{
 
         let serial_number: JsonValue = CubeSerialNumber::get().into();
-        let event_time: JsonValue = Local::now().to_rfc3339().into();
+        let event_time: JsonValue = self.event_time().into();
 
-        let battery_event: JsonValue = self.decode(self.event())?.into();
+        let battery_event: JsonValue = self.decode(self.msg())?.into();
 
         // should be "0" 
         let ac_battery_switch_counter: JsonValue = 0.into();

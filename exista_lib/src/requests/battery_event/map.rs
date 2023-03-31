@@ -1,3 +1,4 @@
+
 use crate::application::constants::*;
 
 pub trait Map{

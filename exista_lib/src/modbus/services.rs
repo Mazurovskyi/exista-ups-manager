@@ -58,7 +58,7 @@ fn listener(bus: Modbus)->impl FnOnce() + Send + 'static{
             if let Ok(msg) = bus.read_once(&mut feedback){
 
                 if msg.is_event(){
-                   
+                    
                     Log::write(&format!("Received an event: {:?}", msg.data()));
                         
                     RequestsStack::push(Request::battery_event(msg))
