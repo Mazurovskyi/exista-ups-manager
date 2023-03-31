@@ -94,8 +94,6 @@ impl Modbus{
     /// athomary operation to send data into modbus and return a reply immediately.
     pub fn send(&self, msg: &ModbusMsg)->Result<ModbusMsg, Box<dyn Error + '_>>{
 
-        println!("sending modbus message: {:?}", msg.data());
-
         let mut port_guard = self.port().lock()?;
 
         Self::sending(&mut port_guard, msg.data())?;

@@ -58,9 +58,9 @@ fn listener(bus: Modbus)->impl FnOnce() + Send + 'static{
             if let Ok(msg) = bus.read_once(&mut feedback){
 
                 if msg.is_event(){
-                    
+
                     Log::write(&format!("Received an event: {:?}", msg.data()));
-                        
+                    
                     RequestsStack::push(Request::battery_event(msg))
                         .unwrap_or_else(|err|{
                             panic!("Executing error: can`t write event into stack! {err}");
@@ -70,6 +70,8 @@ fn listener(bus: Modbus)->impl FnOnce() + Send + 'static{
                     println!("received trash: {:?}", feedback);
                 }
             }
+            // Thread should be stopped otherwise it blocks Mutex<ModbusPort> !
+            thread::sleep(Duration::from_micros(250));
         }
     }
 }

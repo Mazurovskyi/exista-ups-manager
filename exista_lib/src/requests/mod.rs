@@ -51,7 +51,7 @@ impl Display for Request{
 
 pub trait RequestObject : MqttSending + Display{
     /// inserts data into Request object. 
-    /// Returns Err() if something wrong with Modbus connection or event should be skipped.
+    /// Returns Err() if ups doesn`t reply or event should be skipped.
     fn insert_data<'a>(&mut self, bus: &'a Modbus)->Result<(), Box<dyn Error + 'a>>;
 }
 
