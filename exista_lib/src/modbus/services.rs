@@ -71,7 +71,7 @@ fn listener(bus: Modbus)->impl FnOnce() + Send + 'static{
                 }
             }
             // Thread should be stopped otherwise it blocks Mutex<ModbusPort> !
-            thread::sleep(Duration::from_micros(250));
+            thread::sleep(Duration::from_micros(500));
         }
     }
 }

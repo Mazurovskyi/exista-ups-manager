@@ -25,10 +25,8 @@ impl ModbusMsg{
     }
 
     pub fn registers_value_percent(&self)->Option<i32>{
-        let msg = self.data();
-        let mut temp = ((*msg.get(3)? as u32) << 8) + (*msg.get(4)? as u32);
-        temp = (temp * 100) / 0xFFFF;
-        Some(temp as i32)
+        let val = (self.registers_value()? * 100) / 0xFFFF;
+        Some(val as i32)
     }
 
     pub fn is_event(&self)->bool{
@@ -92,5 +90,4 @@ impl IntoMsg for [u8] {
         ModbusMsg{msg, len}
     }
 }
-
 
